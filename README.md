@@ -48,21 +48,7 @@ PROXMOX_VERIFY_SSL=false        # false for self-signed certs
 
 ## MCP Client Configuration
 
-```json
-{
-  "mcpServers": {
-    "proxmox": {
-      "command": "node",
-      "args": ["/path/to/proxmox-ve-mcp/dist/index.js"],
-      "env": {
-        "PROXMOX_HOST": "192.168.1.100",
-        "PROXMOX_TOKEN_ID": "root@pam!mcp-server",
-        "PROXMOX_TOKEN_SECRET": "your-token"
-      }
-    }
-  }
-}
-```
+See [AI_INSTALL.md](./AI_INSTALL.md) for copy-paste ready configuration blocks.
 
 ## Development
 
