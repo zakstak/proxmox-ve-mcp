@@ -4,7 +4,7 @@ import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatUptime, formatPercentage } from '../types.js';
 
-export function registerContainerTools(
+export function registerContainerReadTools(
   server: McpServer,
   proxmox: ProxmoxClient,
   config: Config
@@ -83,7 +83,13 @@ export function registerContainerTools(
       };
     }
   );
+}
 
+export function registerContainerWriteTools(
+  server: McpServer,
+  proxmox: ProxmoxClient,
+  config: Config
+): void {
   server.tool(
     'start_container',
     'Start a stopped container',

@@ -4,7 +4,7 @@ import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatPercentage } from '../types.js';
 
-export function registerStorageTools(
+export function registerStorageReadTools(
   server: McpServer,
   proxmox: ProxmoxClient,
   config: Config

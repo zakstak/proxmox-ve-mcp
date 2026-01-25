@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 
-export function registerSnapshotTools(
+export function registerSnapshotReadTools(
   server: McpServer,
   proxmox: ProxmoxClient,
   config: Config
@@ -39,7 +39,13 @@ export function registerSnapshotTools(
       };
     }
   );
+}
 
+export function registerSnapshotWriteTools(
+  server: McpServer,
+  proxmox: ProxmoxClient,
+  config: Config
+): void {
   server.tool(
     'create_snapshot',
     'Create a snapshot of a VM or container',

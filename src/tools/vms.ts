@@ -4,7 +4,7 @@ import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatUptime, formatPercentage } from '../types.js';
 
-export function registerVmTools(
+export function registerVmReadTools(
   server: McpServer,
   proxmox: ProxmoxClient,
   config: Config
@@ -84,7 +84,13 @@ export function registerVmTools(
       };
     }
   );
+}
 
+export function registerVmWriteTools(
+  server: McpServer,
+  proxmox: ProxmoxClient,
+  config: Config
+): void {
   server.tool(
     'start_vm',
     'Start a stopped virtual machine',

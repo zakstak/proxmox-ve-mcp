@@ -4,7 +4,7 @@ import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatUptime, formatPercentage } from '../types.js';
 
-export function registerNodeTools(
+export function registerNodeReadTools(
   server: McpServer,
   proxmox: ProxmoxClient,
   config: Config

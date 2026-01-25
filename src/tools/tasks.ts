@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 
-export function registerTaskTools(
+export function registerTaskReadTools(
   server: McpServer,
   proxmox: ProxmoxClient,
   config: Config
@@ -72,7 +72,13 @@ export function registerTaskTools(
       };
     }
   );
+}
 
+export function registerTaskWriteTools(
+  server: McpServer,
+  proxmox: ProxmoxClient,
+  config: Config
+): void {
   server.tool(
     'stop_task',
     'Attempt to stop a running task',
