@@ -6,7 +6,7 @@ Copy-paste ready MCP configuration for AI assistants.
 
 1. Clone and build the server:
 ```bash
-git clone https://github.com/your-username/proxmox-ve-mcp.git
+git clone https://github.com/zrm625/proxmox-ve-mcp.git
 cd proxmox-ve-mcp
 npm install
 npm run build
@@ -19,30 +19,55 @@ pveum user token add root@pam mcp-server --privsep 0
 
 ## Configuration Blocks
 
-### Claude Desktop / Cursor / Generic MCP Client
+### OpenCode (Local MCP)
 
-Add to your MCP config file (e.g., `~/.config/claude/claude_desktop_config.json`):
+Add to `~/.config/opencode/opencode.json`:
 
+**Read-only (recommended for safety):**
 ```json
 {
-  "mcpServers": {
-    "proxmox": {
-      "command": "node",
-      "args": ["REPLACE_WITH_ABSOLUTE_PATH/proxmox-ve-mcp/dist/index.js"],
-      "env": {
+  "mcp": {
+    "proxmox_readonly": {
+      "type": "local",
+      "command": ["node", "REPLACE_WITH_ABSOLUTE_PATH/proxmox-ve-mcp/dist/index-readonly.js"],
+      "environment": {
         "PROXMOX_HOST": "REPLACE_WITH_PROXMOX_IP",
         "PROXMOX_PORT": "8006",
         "PROXMOX_NODE": "pve",
         "PROXMOX_TOKEN_ID": "root@pam!mcp-server",
         "PROXMOX_TOKEN_SECRET": "REPLACE_WITH_TOKEN_SECRET",
         "PROXMOX_VERIFY_SSL": "false"
-      }
+      },
+      "enabled": true
     }
   }
 }
 ```
 
-### OpenCode / SSE Transport
+**Full access (can start/stop/delete VMs):**
+```json
+{
+  "mcp": {
+    "proxmox": {
+      "type": "local",
+      "command": ["node", "REPLACE_WITH_ABSOLUTE_PATH/proxmox-ve-mcp/dist/index.js"],
+      "environment": {
+        "PROXMOX_HOST": "REPLACE_WITH_PROXMOX_IP",
+        "PROXMOX_PORT": "8006",
+        "PROXMOX_NODE": "pve",
+        "PROXMOX_TOKEN_ID": "root@pam!mcp-server",
+        "PROXMOX_TOKEN_SECRET": "REPLACE_WITH_TOKEN_SECRET",
+        "PROXMOX_VERIFY_SSL": "false"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+### Claude Desktop / Cursor / Generic MCP Client
+
+Add to your MCP config file (e.g., `~/.config/claude/claude_desktop_config.json`):
 
 ```json
 {
@@ -84,16 +109,28 @@ Add to your MCP config file (e.g., `~/.config/claude/claude_desktop_config.json`
 
 ## Available Tools
 
-After installation, these 25 tools become available:
+### Read-only (`index-readonly.js`)
 
 **Nodes**: `list_nodes`, `get_node_status`
 
-**VMs**: `list_vms`, `get_vm_status`, `start_vm`, `stop_vm`, `shutdown_vm`, `reboot_vm`, `suspend_vm`, `resume_vm`, `clone_vm`, `delete_vm`
+**VMs**: `list_vms`, `get_vm_status`
 
-**Containers**: `list_containers`, `get_container_status`, `start_container`, `stop_container`, `reboot_container`
+**Containers**: `list_containers`, `get_container_status`
 
 **Storage**: `list_storage`, `get_storage_content`
 
-**Snapshots**: `list_snapshots`, `create_snapshot`, `rollback_snapshot`, `delete_snapshot`
+**Snapshots**: `list_snapshots`
 
-**Tasks**: `list_tasks`, `get_task_status`, `stop_task`
+**Tasks**: `list_tasks`, `get_task_status`
+
+### Full access (`index.js`)
+
+All read-only tools plus:
+
+**VMs**: `start_vm`, `stop_vm`, `shutdown_vm`, `reboot_vm`, `suspend_vm`, `resume_vm`, `clone_vm`, `delete_vm`
+
+**Containers**: `start_container`, `stop_container`, `reboot_container`
+
+**Snapshots**: `create_snapshot`, `rollback_snapshot`, `delete_snapshot`
+
+**Tasks**: `stop_task`
