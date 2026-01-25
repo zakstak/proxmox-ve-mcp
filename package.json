@@ -6,8 +6,10 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:readonly": "tsx watch src/index-readonly.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:readonly": "node dist/index-readonly.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts"
   },
