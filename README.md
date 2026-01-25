@@ -37,14 +37,25 @@ PROXMOX_VERIFY_SSL=false        # false for self-signed certs
 
 ## MCP Tools (25 total)
 
-| Category | Tools |
-|----------|-------|
-| **Nodes** | `list_nodes`, `get_node_status` |
-| **VMs** | `list_vms`, `get_vm_status`, `start_vm`, `stop_vm`, `shutdown_vm`, `reboot_vm`, `suspend_vm`, `resume_vm`, `clone_vm`, `delete_vm` |
-| **Containers** | `list_containers`, `get_container_status`, `start_container`, `stop_container`, `reboot_container` |
-| **Storage** | `list_storage`, `get_storage_content` |
-| **Snapshots** | `list_snapshots`, `create_snapshot`, `rollback_snapshot`, `delete_snapshot` |
-| **Tasks** | `list_tasks`, `get_task_status`, `stop_task` |
+Two server modes are available for different security requirements:
+
+### Full Server (default)
+All 25 tools including read and write operations.
+
+### Read-Only Server
+11 read-only tools for monitoring without modification capabilities:
+- `list_nodes`, `get_node_status`, `list_vms`, `get_vm_status`
+- `list_containers`, `get_container_status`, `list_storage`, `get_storage_content`
+- `list_snapshots`, `list_tasks`, `get_task_status`
+
+| Category | Read-Only | Write |
+|----------|-----------|-------|
+| **Nodes** | `list_nodes`, `get_node_status` | - |
+| **VMs** | `list_vms`, `get_vm_status` | `start_vm`, `stop_vm`, `shutdown_vm`, `reboot_vm`, `suspend_vm`, `resume_vm`, `clone_vm`, `delete_vm` |
+| **Containers** | `list_containers`, `get_container_status` | `start_container`, `stop_container`, `reboot_container` |
+| **Storage** | `list_storage`, `get_storage_content` | - |
+| **Snapshots** | `list_snapshots` | `create_snapshot`, `rollback_snapshot`, `delete_snapshot` |
+| **Tasks** | `list_tasks`, `get_task_status` | `stop_task` |
 
 ## MCP Client Configuration
 
@@ -53,10 +64,12 @@ See [AI_INSTALL.md](./AI_INSTALL.md) for copy-paste ready configuration blocks.
 ## Development
 
 ```bash
-npm run dev       # Hot reload
-npm run build     # Compile TypeScript
-npm run typecheck # Type checking only
-npm start         # Run compiled version
+npm run dev            # Hot reload (full server)
+npm run dev:readonly   # Hot reload (read-only server)
+npm run build          # Compile TypeScript
+npm run typecheck      # Type checking only
+npm start              # Run compiled full server
+npm start:readonly     # Run compiled read-only server
 ```
 
 ## License
