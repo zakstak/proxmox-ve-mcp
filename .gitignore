@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files (contain secrets!)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Proxmox specific
+gpu-roms/
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*-ca-cert*
+*-key.pem
+*-cert.pem
+
+# SAGA secrets
+saga/config/secrets.env
+saga/gateway/mitmproxy/secrets.env
+saga/gateway/warp/mdm.xml
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Rust
+target/
+Cargo.lock
+
+# Downloaded docs
+*.pdf
+Gemini_Generated_Image_*.png
