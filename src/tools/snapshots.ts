@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
+import { withErrorHandling } from '../utils/error-handler.js';
 
 export function registerSnapshotReadTools(
   server: McpServer,
@@ -16,7 +17,7 @@ export function registerSnapshotReadTools(
       type: z.enum(['qemu', 'lxc']).default('qemu').describe('Resource type'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, type, node }) => {
+    withErrorHandling(async ({ vmid, type, node }) => {
       const nodeName = node || config.node;
       const theNode = proxmox.nodes.$(nodeName);
       
@@ -37,7 +38,7 @@ export function registerSnapshotReadTools(
       return {
         content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
       };
-    }
+    })
   );
 }
 
@@ -57,7 +58,7 @@ export function registerSnapshotWriteTools(
       type: z.enum(['qemu', 'lxc']).default('qemu').describe('Resource type'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, snapname, description, vmstate, type, node }) => {
+    withErrorHandling(async ({ vmid, snapname, description, vmstate, type, node }) => {
       const nodeName = node || config.node;
       const theNode = proxmox.nodes.$(nodeName);
       
@@ -78,7 +79,7 @@ export function registerSnapshotWriteTools(
           text: `Snapshot '${snapname}' creation initiated for ${type} ${vmid}. Task: ${taskId}` 
         }],
       };
-    }
+    })
   );
 
   server.tool(
@@ -90,7 +91,7 @@ export function registerSnapshotWriteTools(
       type: z.enum(['qemu', 'lxc']).default('qemu').describe('Resource type'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, snapname, type, node }) => {
+    withErrorHandling(async ({ vmid, snapname, type, node }) => {
       const nodeName = node || config.node;
       const theNode = proxmox.nodes.$(nodeName);
       
@@ -104,7 +105,7 @@ export function registerSnapshotWriteTools(
           text: `Rollback to '${snapname}' initiated for ${type} ${vmid}. Task: ${taskId}` 
         }],
       };
-    }
+    })
   );
 
   server.tool(
@@ -116,7 +117,7 @@ export function registerSnapshotWriteTools(
       type: z.enum(['qemu', 'lxc']).default('qemu').describe('Resource type'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, snapname, type, node }) => {
+    withErrorHandling(async ({ vmid, snapname, type, node }) => {
       const nodeName = node || config.node;
       const theNode = proxmox.nodes.$(nodeName);
       
@@ -130,6 +131,6 @@ export function registerSnapshotWriteTools(
           text: `Snapshot '${snapname}' deletion initiated for ${type} ${vmid}. Task: ${taskId}` 
         }],
       };
-    }
+    })
   );
 }

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatPercentage } from '../types.js';
+import { withErrorHandling } from '../utils/error-handler.js';
 
 export function registerStorageReadTools(
   server: McpServer,
@@ -15,7 +16,7 @@ export function registerStorageReadTools(
     {
       node: z.string().optional().describe('Node name'),
     },
-    async ({ node }) => {
+    withErrorHandling(async ({ node }) => {
       const nodeName = node || config.node;
       const storage = await proxmox.nodes.$(nodeName).storage.$get();
       
@@ -35,7 +36,7 @@ export function registerStorageReadTools(
       return {
         content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
       };
-    }
+    })
   );
 
   server.tool(
@@ -46,7 +47,7 @@ export function registerStorageReadTools(
       node: z.string().optional().describe('Node name'),
       content: z.string().optional().describe('Filter by content type (images, iso, vztmpl, backup)'),
     },
-    async ({ storage, node, content }) => {
+    withErrorHandling(async ({ storage, node, content }) => {
       const nodeName = node || config.node;
       const items = await proxmox.nodes.$(nodeName).storage.$(storage).content.$get({
         content,
@@ -65,6 +66,6 @@ export function registerStorageReadTools(
       return {
         content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
       };
-    }
+    })
   );
 }
