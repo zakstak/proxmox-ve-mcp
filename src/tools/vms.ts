@@ -19,14 +19,14 @@ export function registerVmReadTools(
     async ({ node }) => {
       try {
         const nodeName = node || config.node;
-        const vms = await proxmox.nodes.$(nodeName).qemu.$get({ full: true });
+        const vms = await proxmox.nodes.$(nodeName).qemu.$get();
 
         const formatted = vms.map((vm) => ({
           vmid: vm.vmid,
           name: vm.name || `VM ${vm.vmid}`,
           status: vm.status,
           cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-          cores: vm.cpus || 'N/A',
+          cores: vm.cpus || vm.maxcpu || 'N/A',
           memory: vm.mem && vm.maxmem
             ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
             : 'N/A',
