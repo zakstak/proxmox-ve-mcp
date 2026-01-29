@@ -19,14 +19,16 @@ export function registerVmReadTools(
     async ({ node }) => {
       try {
         const nodeName = node || config.node;
-        const vms = await proxmox.nodes.$(nodeName).qemu.$get({ full: true });
+        // Bolt Optimization: Removing { full: true } avoids parsing config for every VM (N+1 bottleneck)
+        const vms = await proxmox.nodes.$(nodeName).qemu.$get();
 
         const formatted = vms.map((vm) => ({
           vmid: vm.vmid,
           name: vm.name || `VM ${vm.vmid}`,
           status: vm.status,
           cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-          cores: vm.cpus || 'N/A',
+          // Fallback to maxcpu when cpus is missing (standard API response)
+          cores: vm.cpus || (vm as any).maxcpu || 'N/A',
           memory: vm.mem && vm.maxmem
             ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
             : 'N/A',
