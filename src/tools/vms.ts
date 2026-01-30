@@ -19,19 +19,25 @@ export function registerVmReadTools(
     async ({ node }) => {
       try {
         const nodeName = node || config.node;
-        const vms = await proxmox.nodes.$(nodeName).qemu.$get({ full: true });
+        // Optimization: Use cluster resources instead of nodes/{node}/qemu with full: true
+        // This avoids N+1 config parsing overhead and uses cached cluster state
+        const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+
+        const vms = resources.filter(
+          (r) => r.type === 'qemu' && r.node === nodeName
+        );
 
         const formatted = vms.map((vm) => ({
           vmid: vm.vmid,
           name: vm.name || `VM ${vm.vmid}`,
           status: vm.status,
           cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-          cores: vm.cpus || 'N/A',
+          cores: vm.maxcpu || 'N/A',
           memory: vm.mem && vm.maxmem
             ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
             : 'N/A',
           uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
-          pid: vm.pid || null,
+          pid: null, // pid is not available in cluster resources
         }));
 
         return {
