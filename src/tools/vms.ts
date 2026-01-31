@@ -259,7 +259,7 @@ export function registerVmWriteTools(
     'Clone an existing VM to create a new one',
     {
       vmid: z.number().int().positive().describe('Source VM ID'),
-      newid: z.number().int().positive().describe('New VM ID'),
+      newid: z.number().int().positive().optional().describe('New VM ID (auto-generated if not provided)'),
       name: z.string().optional().describe('Name for the new VM'),
       node: z.string().optional().describe('Node name'),
       full: z.boolean().optional().describe('Create full clone (not linked)'),
@@ -267,8 +267,16 @@ export function registerVmWriteTools(
     async ({ vmid, newid, name, node, full }) => {
       try {
         const nodeName = node || config.node;
+
+        let targetId = newid;
+        if (!targetId) {
+          const nextId = await proxmox.cluster.nextid.$get();
+          // Handle potential type mismatch (string vs number) from API or types
+          targetId = typeof nextId === 'string' ? parseInt(nextId, 10) : nextId;
+        }
+
         const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).clone.$post({
-          newid,
+          newid: targetId,
           name,
           full: full,
         });
@@ -276,7 +284,7 @@ export function registerVmWriteTools(
         return {
           content: [{
             type: 'text',
-            text: `VM ${vmid} clone to ${newid} initiated. Task: ${taskId}`
+            text: `VM ${vmid} clone to ${targetId} initiated. Task: ${taskId}`
           }],
         };
       } catch (error) {

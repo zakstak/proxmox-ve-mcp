@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatUptime, formatPercentage } from '../types.js';
+import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerContainerReadTools(
   server: McpServer,
@@ -138,6 +139,46 @@ export function registerContainerWriteTools(
       return {
         content: [{ type: 'text', text: `Container ${vmid} reboot initiated. Task: ${taskId}` }],
       };
+    }
+  );
+
+  server.tool(
+    'clone_container',
+    'Clone an existing container to create a new one',
+    {
+      vmid: z.number().int().positive().describe('Source Container ID'),
+      newid: z.number().int().positive().optional().describe('New Container ID (auto-generated if not provided)'),
+      name: z.string().optional().describe('Name (hostname) for the new container'),
+      node: z.string().optional().describe('Node name'),
+      full: z.boolean().optional().describe('Create full clone (not linked)'),
+      target: z.string().optional().describe('Target node (if different from source)'),
+    },
+    async ({ vmid, newid, name, node, full, target }) => {
+      try {
+        const nodeName = node || config.node;
+
+        let targetId = newid;
+        if (!targetId) {
+          const nextId = await proxmox.cluster.nextid.$get();
+          targetId = typeof nextId === 'string' ? parseInt(nextId, 10) : nextId;
+        }
+
+        const taskId = await proxmox.nodes.$(nodeName).lxc.$(vmid).clone.$post({
+          newid: targetId,
+          hostname: name,
+          full: full,
+          target: target,
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: `Container ${vmid} clone to ${targetId} initiated. Task: ${taskId}`
+          }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 }
