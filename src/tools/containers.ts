@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage, ClusterResource } from '../types.js';
 
 export function registerContainerReadTools(
   server: McpServer,
@@ -17,14 +17,19 @@ export function registerContainerReadTools(
     },
     async ({ node }) => {
       const nodeName = node || config.node;
-      const containers = await proxmox.nodes.$(nodeName).lxc.$get();
+      // Optimization: Use cluster resources to avoid overhead of querying specific node and leverage caching
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resources = await proxmox.cluster.resources.$get({ type: 'lxc' as any }) as ClusterResource[];
+
+      const containers = resources.filter((resource) => resource.node === nodeName);
       
       const formatted = containers.map((ct) => ({
         vmid: ct.vmid,
         name: ct.name || `CT ${ct.vmid}`,
         status: ct.status,
         cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
-        cores: ct.cpus || 'N/A',
+        // cluster/resources uses maxcpu for cores
+        cores: ct.maxcpu || 'N/A',
         memory: ct.mem && ct.maxmem 
           ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
           : 'N/A',

@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage, ClusterResource } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerVmReadTools(
@@ -19,21 +19,23 @@ export function registerVmReadTools(
     async ({ node }) => {
       try {
         const nodeName = node || config.node;
-        // Optimization: Don't use { full: true } as it causes N+1 requests to parse config for every VM
-        const vms = await proxmox.nodes.$(nodeName).qemu.$get();
+        // Optimization: Use cluster resources to avoid overhead of querying specific node and leverage caching
+        const resources = await proxmox.cluster.resources.$get({ type: 'vm' }) as ClusterResource[];
+
+        const vms = resources.filter((resource) => resource.node === nodeName);
 
         const formatted = vms.map((vm) => ({
           vmid: vm.vmid,
           name: vm.name || `VM ${vm.vmid}`,
           status: vm.status,
           cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-          // Fallback to maxcpu if cpus is missing (standard list response)
-          cores: vm.cpus || (vm as any).maxcpu || 'N/A',
+          // cluster/resources uses maxcpu for cores
+          cores: vm.maxcpu || 'N/A',
           memory: vm.mem && vm.maxmem
             ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
             : 'N/A',
           uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
-          pid: vm.pid || null,
+          pid: null, // pid is not available in cluster resources
         }));
 
         return {

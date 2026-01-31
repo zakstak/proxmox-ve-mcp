@@ -68,6 +68,19 @@ export interface TaskInfo {
   pstart?: number;
 }
 
+export interface ClusterResource {
+  vmid: number;
+  name?: string;
+  status: string;
+  cpu?: number;
+  maxcpu?: number;
+  mem?: number;
+  maxmem?: number;
+  uptime?: number;
+  node: string;
+  type: string;
+}
+
 export function formatBytes(bytes: number): string {
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   let size = bytes;
