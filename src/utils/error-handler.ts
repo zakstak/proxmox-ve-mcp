@@ -36,3 +36,13 @@ export function createErrorResponse(error: unknown) {
     isError: true,
   };
 }
+
+export function withErrorHandling<T, R>(fn: (args: T) => Promise<R>) {
+  return async (args: T) => {
+    try {
+      return await fn(args);
+    } catch (error) {
+      return createErrorResponse(error);
+    }
+  };
+}

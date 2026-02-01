@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatUptime, formatPercentage } from '../types.js';
+import { withErrorHandling } from '../utils/error-handler.js';
 
 export function registerContainerReadTools(
   server: McpServer,
@@ -15,7 +16,7 @@ export function registerContainerReadTools(
     {
       node: z.string().optional().describe('Node name'),
     },
-    async ({ node }) => {
+    withErrorHandling(async ({ node }) => {
       const nodeName = node || config.node;
       const containers = await proxmox.nodes.$(nodeName).lxc.$get();
       
@@ -35,7 +36,7 @@ export function registerContainerReadTools(
       return {
         content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
       };
-    }
+    })
   );
 
   server.tool(
@@ -45,7 +46,7 @@ export function registerContainerReadTools(
       vmid: z.number().int().positive().describe('Container ID'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, node }) => {
+    withErrorHandling(async ({ vmid, node }) => {
       const nodeName = node || config.node;
       const theNode = proxmox.nodes.$(nodeName);
       
@@ -81,7 +82,7 @@ export function registerContainerReadTools(
       return {
         content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
       };
-    }
+    })
   );
 }
 
@@ -97,14 +98,14 @@ export function registerContainerWriteTools(
       vmid: z.number().int().positive().describe('Container ID'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, node }) => {
+    withErrorHandling(async ({ vmid, node }) => {
       const nodeName = node || config.node;
       const taskId = await proxmox.nodes.$(nodeName).lxc.$(vmid).status.start.$post();
       
       return {
         content: [{ type: 'text', text: `Container ${vmid} start initiated. Task: ${taskId}` }],
       };
-    }
+    })
   );
 
   server.tool(
@@ -114,14 +115,14 @@ export function registerContainerWriteTools(
       vmid: z.number().int().positive().describe('Container ID'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, node }) => {
+    withErrorHandling(async ({ vmid, node }) => {
       const nodeName = node || config.node;
       const taskId = await proxmox.nodes.$(nodeName).lxc.$(vmid).status.stop.$post();
       
       return {
         content: [{ type: 'text', text: `Container ${vmid} stop initiated. Task: ${taskId}` }],
       };
-    }
+    })
   );
 
   server.tool(
@@ -131,13 +132,13 @@ export function registerContainerWriteTools(
       vmid: z.number().int().positive().describe('Container ID'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, node }) => {
+    withErrorHandling(async ({ vmid, node }) => {
       const nodeName = node || config.node;
       const taskId = await proxmox.nodes.$(nodeName).lxc.$(vmid).status.reboot.$post();
       
       return {
         content: [{ type: 'text', text: `Container ${vmid} reboot initiated. Task: ${taskId}` }],
       };
-    }
+    })
   );
 }
