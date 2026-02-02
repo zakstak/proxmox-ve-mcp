@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatUptime, formatPercentage, ClusterResource } from '../types.js';
-import { createErrorResponse } from '../utils/error-handler.js';
+import { withErrorHandling } from '../utils/error-handler.js';
 
 export function registerVmReadTools(
   server: McpServer,
@@ -16,37 +16,33 @@ export function registerVmReadTools(
     {
       node: z.string().optional().describe('Node name (defaults to configured node)'),
     },
-    async ({ node }) => {
-      try {
-        const nodeName = node || config.node;
+    withErrorHandling(async ({ node }) => {
+      const nodeName = node || config.node;
 
-        // Optimization: Use cluster resources to avoid N+1 requests and leverage cluster cache
-        const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+      // Optimization: Use cluster resources to avoid N+1 requests and leverage cluster cache
+      const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
 
-        // Filter for QEMU VMs and optionally by node
-        const vms = (resources as ClusterResource[])
-          .filter(r => r.type === 'qemu' && r.node === nodeName);
+      // Filter for QEMU VMs and optionally by node
+      const vms = (resources as ClusterResource[])
+        .filter(r => r.type === 'qemu' && r.node === nodeName);
 
-        const formatted = vms.map((vm) => ({
-          vmid: vm.vmid!,
-          name: vm.name || `VM ${vm.vmid}`,
-          status: vm.status,
-          cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-          cores: vm.maxcpu || 'N/A',
-          memory: vm.mem && vm.maxmem
-            ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
-            : 'N/A',
-          uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
-          pid: null, // PID is not available in cluster resources
-        }));
+      const formatted = vms.map((vm) => ({
+        vmid: vm.vmid!,
+        name: vm.name || `VM ${vm.vmid}`,
+        status: vm.status,
+        cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
+        cores: vm.maxcpu || 'N/A',
+        memory: vm.mem && vm.maxmem
+          ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
+          : 'N/A',
+        uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
+        pid: null, // PID is not available in cluster resources
+      }));
 
-        return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
-        };
-      } catch (error) {
-        return createErrorResponse(error);
-      }
-    }
+      return {
+        content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+      };
+    })
   );
 
   server.tool(
@@ -56,48 +52,44 @@ export function registerVmReadTools(
       vmid: z.number().int().positive().describe('VM ID'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, node }) => {
-      try {
-        const nodeName = node || config.node;
-        const theNode = proxmox.nodes.$(nodeName);
+    withErrorHandling(async ({ vmid, node }) => {
+      const nodeName = node || config.node;
+      const theNode = proxmox.nodes.$(nodeName);
 
-        const [status, vmConfig] = await Promise.all([
-          theNode.qemu.$(vmid).status.current.$get(),
-          theNode.qemu.$(vmid).config.$get(),
-        ]);
+      const [status, vmConfig] = await Promise.all([
+        theNode.qemu.$(vmid).status.current.$get(),
+        theNode.qemu.$(vmid).config.$get(),
+      ]);
 
-        const formatted = {
-          vmid,
-          name: vmConfig.name || `VM ${vmid}`,
-          status: status.status,
-          cpu: {
-            usage: status.cpu ? formatPercentage(status.cpu) : 'N/A',
-            cores: vmConfig.cores || 1,
-            sockets: vmConfig.sockets || 1,
-          },
-          memory: {
-            used: status.mem ? formatBytes(status.mem) : 'N/A',
-            total: status.maxmem ? formatBytes(status.maxmem) : 'N/A',
-            configured: vmConfig.memory ? `${vmConfig.memory} MB` : 'N/A',
-          },
-          disk: status.disk ? formatBytes(status.disk) : 'N/A',
-          uptime: status.uptime ? formatUptime(status.uptime) : 'N/A',
-          network: {
-            in: status.netin ? formatBytes(status.netin) : 'N/A',
-            out: status.netout ? formatBytes(status.netout) : 'N/A',
-          },
-          qemuAgent: Boolean(status.agent),
-          machine: vmConfig.machine || 'default',
-          bios: vmConfig.bios || 'seabios',
-        };
+      const formatted = {
+        vmid,
+        name: vmConfig.name || `VM ${vmid}`,
+        status: status.status,
+        cpu: {
+          usage: status.cpu ? formatPercentage(status.cpu) : 'N/A',
+          cores: vmConfig.cores || 1,
+          sockets: vmConfig.sockets || 1,
+        },
+        memory: {
+          used: status.mem ? formatBytes(status.mem) : 'N/A',
+          total: status.maxmem ? formatBytes(status.maxmem) : 'N/A',
+          configured: vmConfig.memory ? `${vmConfig.memory} MB` : 'N/A',
+        },
+        disk: status.disk ? formatBytes(status.disk) : 'N/A',
+        uptime: status.uptime ? formatUptime(status.uptime) : 'N/A',
+        network: {
+          in: status.netin ? formatBytes(status.netin) : 'N/A',
+          out: status.netout ? formatBytes(status.netout) : 'N/A',
+        },
+        qemuAgent: Boolean(status.agent),
+        machine: vmConfig.machine || 'default',
+        bios: vmConfig.bios || 'seabios',
+      };
 
-        return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
-        };
-      } catch (error) {
-        return createErrorResponse(error);
-      }
-    }
+      return {
+        content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+      };
+    })
   );
 }
 
@@ -113,21 +105,17 @@ export function registerVmWriteTools(
       vmid: z.number().int().positive().describe('VM ID to start'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, node }) => {
-      try {
-        const nodeName = node || config.node;
-        const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.start.$post();
+    withErrorHandling(async ({ vmid, node }) => {
+      const nodeName = node || config.node;
+      const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.start.$post();
 
-        return {
-          content: [{
-            type: 'text',
-            text: `VM ${vmid} start initiated. Task: ${taskId}`
-          }],
-        };
-      } catch (error) {
-        return createErrorResponse(error);
-      }
-    }
+      return {
+        content: [{
+          type: 'text',
+          text: `VM ${vmid} start initiated. Task: ${taskId}`
+        }],
+      };
+    })
   );
 
   server.tool(
@@ -138,23 +126,19 @@ export function registerVmWriteTools(
       node: z.string().optional().describe('Node name'),
       timeout: z.number().int().optional().describe('Timeout in seconds'),
     },
-    async ({ vmid, node, timeout }) => {
-      try {
-        const nodeName = node || config.node;
-        const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.stop.$post({
-          timeout: timeout || 60,
-        });
+    withErrorHandling(async ({ vmid, node, timeout }) => {
+      const nodeName = node || config.node;
+      const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.stop.$post({
+        timeout: timeout || 60,
+      });
 
-        return {
-          content: [{
-            type: 'text',
-            text: `VM ${vmid} stop initiated. Task: ${taskId}`
-          }],
-        };
-      } catch (error) {
-        return createErrorResponse(error);
-      }
-    }
+      return {
+        content: [{
+          type: 'text',
+          text: `VM ${vmid} stop initiated. Task: ${taskId}`
+        }],
+      };
+    })
   );
 
   server.tool(
@@ -166,24 +150,20 @@ export function registerVmWriteTools(
       forceStop: z.boolean().optional().describe('Force stop after timeout'),
       timeout: z.number().int().optional().describe('Timeout in seconds'),
     },
-    async ({ vmid, node, forceStop, timeout }) => {
-      try {
-        const nodeName = node || config.node;
-        const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.shutdown.$post({
-          forceStop: forceStop,
-          timeout: timeout || 60,
-        });
+    withErrorHandling(async ({ vmid, node, forceStop, timeout }) => {
+      const nodeName = node || config.node;
+      const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.shutdown.$post({
+        forceStop: forceStop,
+        timeout: timeout || 60,
+      });
 
-        return {
-          content: [{
-            type: 'text',
-            text: `VM ${vmid} shutdown initiated. Task: ${taskId}`
-          }],
-        };
-      } catch (error) {
-        return createErrorResponse(error);
-      }
-    }
+      return {
+        content: [{
+          type: 'text',
+          text: `VM ${vmid} shutdown initiated. Task: ${taskId}`
+        }],
+      };
+    })
   );
 
   server.tool(
@@ -193,21 +173,17 @@ export function registerVmWriteTools(
       vmid: z.number().int().positive().describe('VM ID'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, node }) => {
-      try {
-        const nodeName = node || config.node;
-        const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.reboot.$post();
+    withErrorHandling(async ({ vmid, node }) => {
+      const nodeName = node || config.node;
+      const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.reboot.$post();
 
-        return {
-          content: [{
-            type: 'text',
-            text: `VM ${vmid} reboot initiated. Task: ${taskId}`
-          }],
-        };
-      } catch (error) {
-        return createErrorResponse(error);
-      }
-    }
+      return {
+        content: [{
+          type: 'text',
+          text: `VM ${vmid} reboot initiated. Task: ${taskId}`
+        }],
+      };
+    })
   );
 
   server.tool(
@@ -217,21 +193,17 @@ export function registerVmWriteTools(
       vmid: z.number().int().positive().describe('VM ID'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, node }) => {
-      try {
-        const nodeName = node || config.node;
-        const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.suspend.$post();
+    withErrorHandling(async ({ vmid, node }) => {
+      const nodeName = node || config.node;
+      const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.suspend.$post();
 
-        return {
-          content: [{
-            type: 'text',
-            text: `VM ${vmid} suspend initiated. Task: ${taskId}`
-          }],
-        };
-      } catch (error) {
-        return createErrorResponse(error);
-      }
-    }
+      return {
+        content: [{
+          type: 'text',
+          text: `VM ${vmid} suspend initiated. Task: ${taskId}`
+        }],
+      };
+    })
   );
 
   server.tool(
@@ -241,21 +213,17 @@ export function registerVmWriteTools(
       vmid: z.number().int().positive().describe('VM ID'),
       node: z.string().optional().describe('Node name'),
     },
-    async ({ vmid, node }) => {
-      try {
-        const nodeName = node || config.node;
-        const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.resume.$post();
+    withErrorHandling(async ({ vmid, node }) => {
+      const nodeName = node || config.node;
+      const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).status.resume.$post();
 
-        return {
-          content: [{
-            type: 'text',
-            text: `VM ${vmid} resume initiated. Task: ${taskId}`
-          }],
-        };
-      } catch (error) {
-        return createErrorResponse(error);
-      }
-    }
+      return {
+        content: [{
+          type: 'text',
+          text: `VM ${vmid} resume initiated. Task: ${taskId}`
+        }],
+      };
+    })
   );
 
   server.tool(
@@ -268,25 +236,21 @@ export function registerVmWriteTools(
       node: z.string().optional().describe('Node name'),
       full: z.boolean().optional().describe('Create full clone (not linked)'),
     },
-    async ({ vmid, newid, name, node, full }) => {
-      try {
-        const nodeName = node || config.node;
-        const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).clone.$post({
-          newid,
-          name,
-          full: full,
-        });
+    withErrorHandling(async ({ vmid, newid, name, node, full }) => {
+      const nodeName = node || config.node;
+      const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).clone.$post({
+        newid,
+        name,
+        full: full,
+      });
 
-        return {
-          content: [{
-            type: 'text',
-            text: `VM ${vmid} clone to ${newid} initiated. Task: ${taskId}`
-          }],
-        };
-      } catch (error) {
-        return createErrorResponse(error);
-      }
-    }
+      return {
+        content: [{
+          type: 'text',
+          text: `VM ${vmid} clone to ${newid} initiated. Task: ${taskId}`
+        }],
+      };
+    })
   );
 
   server.tool(
@@ -297,22 +261,18 @@ export function registerVmWriteTools(
       node: z.string().optional().describe('Node name'),
       purge: z.boolean().optional().describe('Remove from backup jobs and HA'),
     },
-    async ({ vmid, node, purge }) => {
-      try {
-        const nodeName = node || config.node;
-        const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).$delete({
-          purge: purge,
-        });
+    withErrorHandling(async ({ vmid, node, purge }) => {
+      const nodeName = node || config.node;
+      const taskId = await proxmox.nodes.$(nodeName).qemu.$(vmid).$delete({
+        purge: purge,
+      });
 
-        return {
-          content: [{
-            type: 'text',
-            text: `VM ${vmid} deletion initiated. Task: ${taskId}`
-          }],
-        };
-      } catch (error) {
-        return createErrorResponse(error);
-      }
-    }
+      return {
+        content: [{
+          type: 'text',
+          text: `VM ${vmid} deletion initiated. Task: ${taskId}`
+        }],
+      };
+    })
   );
 }
