@@ -68,6 +68,21 @@ export interface TaskInfo {
   pstart?: number;
 }
 
+export interface ClusterResource {
+  id: string;
+  type: 'qemu' | 'lxc' | 'openvz' | 'node' | 'storage' | 'pool';
+  vmid?: number;
+  node: string;
+  status: string;
+  maxcpu?: number;
+  cpu?: number;
+  maxmem?: number;
+  mem?: number;
+  uptime?: number;
+  name?: string;
+  disk?: number;
+}
+
 export function formatBytes(bytes: number): string {
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   let size = bytes;
