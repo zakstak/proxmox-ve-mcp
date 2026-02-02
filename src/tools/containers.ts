@@ -28,7 +28,7 @@ export function registerContainerReadTools(
         vmid: ct.vmid!,
         name: ct.name || `CT ${ct.vmid}`,
         status: ct.status,
-        cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
+        cpu: ct.cpu !== undefined ? formatPercentage(ct.cpu) : 'N/A',
         cores: ct.maxcpu || 'N/A',
         memory: ct.mem && ct.maxmem 
           ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
@@ -38,7 +38,7 @@ export function registerContainerReadTools(
       }));
 
       return {
-        content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify(formatted) }],
       };
     }
   );
@@ -64,7 +64,7 @@ export function registerContainerReadTools(
         name: ctConfig.hostname || `CT ${vmid}`,
         status: status.status,
         cpu: {
-          usage: status.cpu ? formatPercentage(status.cpu) : 'N/A',
+          usage: status.cpu !== undefined ? formatPercentage(status.cpu) : 'N/A',
           cores: ctConfig.cores || 'unlimited',
         },
         memory: {
@@ -84,7 +84,7 @@ export function registerContainerReadTools(
       };
 
       return {
-        content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify(formatted) }],
       };
     }
   );

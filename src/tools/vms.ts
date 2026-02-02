@@ -31,17 +31,16 @@ export function registerVmReadTools(
           vmid: vm.vmid!,
           name: vm.name || `VM ${vm.vmid}`,
           status: vm.status,
-          cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
+          cpu: vm.cpu !== undefined ? formatPercentage(vm.cpu) : 'N/A',
           cores: vm.maxcpu || 'N/A',
           memory: vm.mem && vm.maxmem
             ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
             : 'N/A',
           uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
-          pid: null, // PID is not available in cluster resources
         }));
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -71,7 +70,7 @@ export function registerVmReadTools(
           name: vmConfig.name || `VM ${vmid}`,
           status: status.status,
           cpu: {
-            usage: status.cpu ? formatPercentage(status.cpu) : 'N/A',
+            usage: status.cpu !== undefined ? formatPercentage(status.cpu) : 'N/A',
             cores: vmConfig.cores || 1,
             sockets: vmConfig.sockets || 1,
           },
@@ -92,7 +91,7 @@ export function registerVmReadTools(
         };
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);

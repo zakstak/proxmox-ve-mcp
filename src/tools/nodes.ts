@@ -21,7 +21,7 @@ export function registerNodeReadTools(
         const formatted = nodes.map((node) => ({
           name: node.node,
           status: node.status || 'unknown',
-          cpu: node.cpu ? formatPercentage(node.cpu) : 'N/A',
+          cpu: node.cpu !== undefined ? formatPercentage(node.cpu) : 'N/A',
           cores: node.maxcpu || 'N/A',
           memory: node.mem && node.maxmem
             ? `${formatBytes(node.mem)} / ${formatBytes(node.maxmem)}`
@@ -35,7 +35,7 @@ export function registerNodeReadTools(
         return {
           content: [{
             type: 'text',
-            text: JSON.stringify(formatted, null, 2)
+            text: JSON.stringify(formatted)
           }],
         };
       } catch (error) {
@@ -59,7 +59,7 @@ export function registerNodeReadTools(
           node: nodeName,
           status: 'online',
           cpu: {
-            usage: status.cpu ? formatPercentage(status.cpu) : 'N/A',
+            usage: status.cpu !== undefined ? formatPercentage(status.cpu) : 'N/A',
             cores: status.cpuinfo?.cpus || 'N/A',
             model: status.cpuinfo?.model || 'N/A',
             sockets: status.cpuinfo?.sockets || 'N/A',
@@ -85,7 +85,7 @@ export function registerNodeReadTools(
         return {
           content: [{
             type: 'text',
-            text: JSON.stringify(formatted, null, 2)
+            text: JSON.stringify(formatted)
           }],
         };
       } catch (error) {

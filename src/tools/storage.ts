@@ -33,7 +33,7 @@ export function registerStorageReadTools(
       }));
 
       return {
-        content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify(formatted) }],
       };
     }
   );
@@ -63,7 +63,7 @@ export function registerStorageReadTools(
       }));
 
       return {
-        content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify(formatted) }],
       };
     }
   );
