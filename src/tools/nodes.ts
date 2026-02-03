@@ -35,7 +35,7 @@ export function registerNodeReadTools(
         return {
           content: [{
             type: 'text',
-            text: JSON.stringify(formatted, null, 2)
+            text: JSON.stringify(formatted) // Optimization: Compact JSON to save tokens
           }],
         };
       } catch (error) {
@@ -85,7 +85,7 @@ export function registerNodeReadTools(
         return {
           content: [{
             type: 'text',
-            text: JSON.stringify(formatted, null, 2)
+            text: JSON.stringify(formatted) // Optimization: Compact JSON to save tokens
           }],
         };
       } catch (error) {

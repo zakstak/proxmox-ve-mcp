@@ -35,7 +35,7 @@ export function registerSnapshotReadTools(
         }));
 
       return {
-        content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify(formatted) }], // Optimization: Compact JSON to save tokens
       };
     }
   );

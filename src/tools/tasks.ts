@@ -37,7 +37,7 @@ export function registerTaskReadTools(
         }));
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }], // Optimization: Compact JSON to save tokens
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -74,7 +74,7 @@ export function registerTaskReadTools(
         };
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }], // Optimization: Compact JSON to save tokens
         };
       } catch (error) {
         return createErrorResponse(error);
