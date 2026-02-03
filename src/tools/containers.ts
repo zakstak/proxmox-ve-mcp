@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatUptime, formatPercentage, ClusterResource } from '../types.js';
+import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerContainerReadTools(
   server: McpServer,
@@ -16,30 +17,34 @@ export function registerContainerReadTools(
       node: z.string().optional().describe('Node name'),
     },
     async ({ node }) => {
-      const nodeName = node || config.node;
+      try {
+        const nodeName = node || config.node;
 
-      // Optimization: Use cluster resources to leverage cache and avoid node-specific queries
-      const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+        // Optimization: Use cluster resources to leverage cache and avoid node-specific queries
+        const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
 
-      const containers = (resources as ClusterResource[])
-        .filter(r => r.type === 'lxc' && r.node === nodeName);
-      
-      const formatted = containers.map((ct) => ({
-        vmid: ct.vmid!,
-        name: ct.name || `CT ${ct.vmid}`,
-        status: ct.status,
-        cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
-        cores: ct.maxcpu || 'N/A',
-        memory: ct.mem && ct.maxmem 
-          ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
-          : 'N/A',
-        uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
-        type: ct.type || 'lxc',
-      }));
+        const containers = (resources as ClusterResource[])
+          .filter(r => r.type === 'lxc' && r.node === nodeName);
 
-      return {
-        content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
-      };
+        const formatted = containers.map((ct) => ({
+          vmid: ct.vmid!,
+          name: ct.name || `CT ${ct.vmid}`,
+          status: ct.status,
+          cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
+          cores: ct.maxcpu || 'N/A',
+          memory: ct.mem && ct.maxmem
+            ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
+            : 'N/A',
+          uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
+          type: ct.type || 'lxc',
+        }));
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 
@@ -51,41 +56,45 @@ export function registerContainerReadTools(
       node: z.string().optional().describe('Node name'),
     },
     async ({ vmid, node }) => {
-      const nodeName = node || config.node;
-      const theNode = proxmox.nodes.$(nodeName);
-      
-      const [status, ctConfig] = await Promise.all([
-        theNode.lxc.$(vmid).status.current.$get(),
-        theNode.lxc.$(vmid).config.$get(),
-      ]);
+      try {
+        const nodeName = node || config.node;
+        const theNode = proxmox.nodes.$(nodeName);
 
-      const formatted = {
-        vmid,
-        name: ctConfig.hostname || `CT ${vmid}`,
-        status: status.status,
-        cpu: {
-          usage: status.cpu ? formatPercentage(status.cpu) : 'N/A',
-          cores: ctConfig.cores || 'unlimited',
-        },
-        memory: {
-          used: status.mem ? formatBytes(status.mem) : 'N/A',
-          total: status.maxmem ? formatBytes(status.maxmem) : 'N/A',
-          configured: ctConfig.memory ? `${ctConfig.memory} MB` : 'N/A',
-        },
-        swap: {
-          used: status.swap ? formatBytes(status.swap) : 'N/A',
-          total: status.maxswap ? formatBytes(status.maxswap) : 'N/A',
-        },
-        disk: status.disk ? formatBytes(status.disk) : 'N/A',
-        uptime: status.uptime ? formatUptime(status.uptime) : 'N/A',
-        ostype: ctConfig.ostype || 'unknown',
-        unprivileged: Boolean(ctConfig.unprivileged),
-        features: ctConfig.features || '',
-      };
+        const [status, ctConfig] = await Promise.all([
+          theNode.lxc.$(vmid).status.current.$get(),
+          theNode.lxc.$(vmid).config.$get(),
+        ]);
 
-      return {
-        content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
-      };
+        const formatted = {
+          vmid,
+          name: ctConfig.hostname || `CT ${vmid}`,
+          status: status.status,
+          cpu: {
+            usage: status.cpu ? formatPercentage(status.cpu) : 'N/A',
+            cores: ctConfig.cores || 'unlimited',
+          },
+          memory: {
+            used: status.mem ? formatBytes(status.mem) : 'N/A',
+            total: status.maxmem ? formatBytes(status.maxmem) : 'N/A',
+            configured: ctConfig.memory ? `${ctConfig.memory} MB` : 'N/A',
+          },
+          swap: {
+            used: status.swap ? formatBytes(status.swap) : 'N/A',
+            total: status.maxswap ? formatBytes(status.maxswap) : 'N/A',
+          },
+          disk: status.disk ? formatBytes(status.disk) : 'N/A',
+          uptime: status.uptime ? formatUptime(status.uptime) : 'N/A',
+          ostype: ctConfig.ostype || 'unknown',
+          unprivileged: Boolean(ctConfig.unprivileged),
+          features: ctConfig.features || '',
+        };
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 }
@@ -103,12 +112,16 @@ export function registerContainerWriteTools(
       node: z.string().optional().describe('Node name'),
     },
     async ({ vmid, node }) => {
-      const nodeName = node || config.node;
-      const taskId = await proxmox.nodes.$(nodeName).lxc.$(vmid).status.start.$post();
-      
-      return {
-        content: [{ type: 'text', text: `Container ${vmid} start initiated. Task: ${taskId}` }],
-      };
+      try {
+        const nodeName = node || config.node;
+        const taskId = await proxmox.nodes.$(nodeName).lxc.$(vmid).status.start.$post();
+
+        return {
+          content: [{ type: 'text', text: `Container ${vmid} start initiated. Task: ${taskId}` }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 
@@ -120,12 +133,16 @@ export function registerContainerWriteTools(
       node: z.string().optional().describe('Node name'),
     },
     async ({ vmid, node }) => {
-      const nodeName = node || config.node;
-      const taskId = await proxmox.nodes.$(nodeName).lxc.$(vmid).status.stop.$post();
-      
-      return {
-        content: [{ type: 'text', text: `Container ${vmid} stop initiated. Task: ${taskId}` }],
-      };
+      try {
+        const nodeName = node || config.node;
+        const taskId = await proxmox.nodes.$(nodeName).lxc.$(vmid).status.stop.$post();
+
+        return {
+          content: [{ type: 'text', text: `Container ${vmid} stop initiated. Task: ${taskId}` }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 
@@ -137,12 +154,16 @@ export function registerContainerWriteTools(
       node: z.string().optional().describe('Node name'),
     },
     async ({ vmid, node }) => {
-      const nodeName = node || config.node;
-      const taskId = await proxmox.nodes.$(nodeName).lxc.$(vmid).status.reboot.$post();
-      
-      return {
-        content: [{ type: 'text', text: `Container ${vmid} reboot initiated. Task: ${taskId}` }],
-      };
+      try {
+        const nodeName = node || config.node;
+        const taskId = await proxmox.nodes.$(nodeName).lxc.$(vmid).status.reboot.$post();
+
+        return {
+          content: [{ type: 'text', text: `Container ${vmid} reboot initiated. Task: ${taskId}` }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 }
