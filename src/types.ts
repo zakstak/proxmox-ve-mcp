@@ -83,17 +83,18 @@ export interface ClusterResource {
   disk?: number;
 }
 
+const BYTES_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
+
 export function formatBytes(bytes: number): string {
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   let size = bytes;
   let unitIndex = 0;
-  
-  while (size >= 1024 && unitIndex < units.length - 1) {
+
+  while (size >= 1024 && unitIndex < BYTES_UNITS.length - 1) {
     size /= 1024;
     unitIndex++;
   }
-  
-  return `${size.toFixed(1)} ${units[unitIndex]}`;
+
+  return `${size.toFixed(1)} ${BYTES_UNITS[unitIndex]}`;
 }
 
 export function formatUptime(seconds: number): string {
