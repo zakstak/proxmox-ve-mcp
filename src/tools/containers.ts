@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage, ClusterResource } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage, ContainerInfo } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerContainerReadTools(
@@ -19,18 +19,15 @@ export function registerContainerReadTools(
     async ({ node }) => {
       const nodeName = node || config.node;
 
-      // Optimization: Use cluster resources to leverage cache and avoid node-specific queries
-      const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+      // Optimization: Use node-specific endpoint to avoid fetching all cluster resources
+      const containers = await proxmox.nodes.$(nodeName).lxc.$get();
 
-      const containers = (resources as ClusterResource[])
-        .filter(r => r.type === 'lxc' && r.node === nodeName);
-      
-      const formatted = containers.map((ct) => ({
-        vmid: ct.vmid!,
+      const formatted = (containers as unknown as ContainerInfo[]).map((ct) => ({
+        vmid: ct.vmid,
         name: ct.name || `CT ${ct.vmid}`,
         status: ct.status,
         cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
-        cores: ct.maxcpu || 'N/A',
+        cores: ct.cpus || 'N/A',
         memory: ct.mem && ct.maxmem 
           ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
           : 'N/A',
