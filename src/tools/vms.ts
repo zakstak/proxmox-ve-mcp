@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage, ClusterResource } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage, VmInfo } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerVmReadTools(
@@ -20,24 +20,20 @@ export function registerVmReadTools(
       try {
         const nodeName = node || config.node;
 
-        // Optimization: Use cluster resources to avoid N+1 requests and leverage cluster cache
-        const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+        // Optimization: Use node-specific endpoint to avoid fetching all cluster resources
+        const vms = await proxmox.nodes.$(nodeName).qemu.$get();
 
-        // Filter for QEMU VMs and optionally by node
-        const vms = (resources as ClusterResource[])
-          .filter(r => r.type === 'qemu' && r.node === nodeName);
-
-        const formatted = vms.map((vm) => ({
-          vmid: vm.vmid!,
+        const formatted = (vms as unknown as VmInfo[]).map((vm) => ({
+          vmid: vm.vmid,
           name: vm.name || `VM ${vm.vmid}`,
           status: vm.status,
           cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-          cores: vm.maxcpu || 'N/A',
+          cores: vm.cpus || 'N/A',
           memory: vm.mem && vm.maxmem
             ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
             : 'N/A',
           uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
-          pid: null, // PID is not available in cluster resources
+          pid: vm.pid || null,
         }));
 
         return {

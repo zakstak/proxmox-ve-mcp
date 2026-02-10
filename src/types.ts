@@ -17,6 +17,7 @@ export interface VmInfo {
   mem?: number;
   maxmem?: number;
   uptime?: number;
+  pid?: number;
   netin?: number;
   netout?: number;
   diskread?: number;
@@ -32,6 +33,7 @@ export interface ContainerInfo {
   mem?: number;
   maxmem?: number;
   uptime?: number;
+  pid?: number;
   type?: string;
 }
 
