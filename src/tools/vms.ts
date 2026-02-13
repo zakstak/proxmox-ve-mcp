@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage, VmInfo } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage, VmInfo, ClusterResource } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerVmReadTools(
@@ -18,26 +18,45 @@ export function registerVmReadTools(
     },
     async ({ node }) => {
       try {
-        const nodeName = node || config.node;
-
-        // Optimization: Use node-specific endpoint to avoid fetching all cluster resources
-        const vms = await proxmox.nodes.$(nodeName).qemu.$get();
-
-        const formatted = (vms as unknown as VmInfo[]).map((vm) => ({
-          vmid: vm.vmid,
-          name: vm.name || `VM ${vm.vmid}`,
-          status: vm.status,
-          cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-          cores: vm.cpus || 'N/A',
-          memory: vm.mem && vm.maxmem
-            ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
-            : 'N/A',
-          uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
-          pid: vm.pid || null,
-        }));
+        let vms;
+        if (node) {
+          // Optimization: Use node-specific endpoint to avoid fetching all cluster resources
+          const nodeVms = await proxmox.nodes.$(node).qemu.$get();
+          vms = (nodeVms as unknown as VmInfo[]).map((vm) => ({
+            vmid: vm.vmid,
+            name: vm.name || `VM ${vm.vmid}`,
+            status: vm.status,
+            cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
+            cores: vm.cpus || 'N/A',
+            memory: vm.mem && vm.maxmem
+              ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
+              : 'N/A',
+            uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
+            pid: vm.pid || null,
+            node: node,
+          }));
+        } else {
+          // Fetch from cluster resources for all nodes (avoids N+1)
+          const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+          vms = (resources as unknown as ClusterResource[])
+            .filter((r) => r.type === 'qemu')
+            .map((vm) => ({
+              vmid: vm.vmid,
+              name: vm.name || `VM ${vm.vmid}`,
+              status: vm.status,
+              cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
+              cores: vm.maxcpu || 'N/A',
+              memory: vm.mem && vm.maxmem
+                ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
+                : 'N/A',
+              uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
+              pid: null, // Cluster resource does not include PID
+              node: vm.node,
+            }));
+        }
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted) }],
+          content: [{ type: 'text', text: JSON.stringify(vms) }],
         };
       } catch (error) {
         return createErrorResponse(error);
