@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage, ContainerInfo } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage, ContainerInfo, ClusterResource } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerContainerReadTools(
@@ -17,27 +17,51 @@ export function registerContainerReadTools(
       node: z.string().optional().describe('Node name'),
     },
     async ({ node }) => {
-      const nodeName = node || config.node;
+      try {
+        let formatted;
 
-      // Optimization: Use node-specific endpoint to avoid fetching all cluster resources
-      const containers = await proxmox.nodes.$(nodeName).lxc.$get();
+        if (node) {
+          const containers = await proxmox.nodes.$(node).lxc.$get();
+          formatted = (containers as unknown as ContainerInfo[]).map((ct) => ({
+            vmid: ct.vmid,
+            name: ct.name || `CT ${ct.vmid}`,
+            status: ct.status,
+            cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
+            cores: ct.cpus || 'N/A',
+            memory: ct.mem && ct.maxmem
+              ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
+              : 'N/A',
+            uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
+            type: ct.type || 'lxc',
+            node: node,
+          }));
+        } else {
+          // Optimization: Use cluster-wide endpoint to avoid N+1 requests
+          // Note: Using type: 'vm' and filtering for 'lxc' as per project guidelines to avoid strict type issues
+          const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+          const containers = (resources as unknown as ClusterResource[]).filter((res) => res.type === 'lxc');
 
-      const formatted = (containers as unknown as ContainerInfo[]).map((ct) => ({
-        vmid: ct.vmid,
-        name: ct.name || `CT ${ct.vmid}`,
-        status: ct.status,
-        cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
-        cores: ct.cpus || 'N/A',
-        memory: ct.mem && ct.maxmem 
-          ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
-          : 'N/A',
-        uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
-        type: ct.type || 'lxc',
-      }));
+          formatted = containers.map((ct) => ({
+            vmid: ct.vmid,
+            name: ct.name || `CT ${ct.vmid}`,
+            status: ct.status,
+            cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
+            cores: ct.maxcpu || 'N/A',
+            memory: ct.mem && ct.maxmem
+              ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
+              : 'N/A',
+            uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
+            type: ct.type || 'lxc',
+            node: ct.node,
+          }));
+        }
 
-      return {
-        content: [{ type: 'text', text: JSON.stringify(formatted) }],
-      };
+        return {
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 
