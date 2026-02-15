@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage, VmInfo } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage, VmInfo, ClusterResource } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerVmReadTools(
@@ -14,27 +14,58 @@ export function registerVmReadTools(
     'list_vms',
     'List all QEMU virtual machines with status, CPU, and memory usage',
     {
-      node: z.string().optional().describe('Node name (defaults to configured node)'),
+      node: z.string().optional().describe('Node name. If omitted, lists all VMs in the cluster.'),
     },
     async ({ node }) => {
       try {
-        const nodeName = node || config.node;
+        interface VmListOutput {
+          vmid: number;
+          name: string;
+          status: string;
+          cpu: string;
+          cores: string | number;
+          memory: string;
+          uptime: string;
+          pid: number | null;
+          node?: string;
+        }
+        let formatted: VmListOutput[];
 
-        // Optimization: Use node-specific endpoint to avoid fetching all cluster resources
-        const vms = await proxmox.nodes.$(nodeName).qemu.$get();
-
-        const formatted = (vms as unknown as VmInfo[]).map((vm) => ({
-          vmid: vm.vmid,
-          name: vm.name || `VM ${vm.vmid}`,
-          status: vm.status,
-          cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-          cores: vm.cpus || 'N/A',
-          memory: vm.mem && vm.maxmem
-            ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
-            : 'N/A',
-          uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
-          pid: vm.pid || null,
-        }));
+        if (node) {
+          // Optimization: Use node-specific endpoint to avoid fetching all cluster resources when node is known
+          const vms = await proxmox.nodes.$(node).qemu.$get();
+          formatted = (vms as unknown as VmInfo[]).map((vm) => ({
+            vmid: vm.vmid,
+            name: vm.name || `VM ${vm.vmid}`,
+            status: vm.status,
+            cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
+            cores: vm.cpus || 'N/A',
+            memory: vm.mem && vm.maxmem
+              ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
+              : 'N/A',
+            uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
+            pid: vm.pid || null,
+            node: node,
+          }));
+        } else {
+          // Fallback: Use cluster resources to fetch all VMs when no node is specified
+          const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+          formatted = (resources as unknown as ClusterResource[])
+            .filter((res) => res.type === 'qemu')
+            .map((res) => ({
+              vmid: res.vmid!,
+              name: res.name || `VM ${res.vmid}`,
+              status: res.status,
+              cpu: res.cpu ? formatPercentage(res.cpu) : 'N/A',
+              cores: res.maxcpu || 'N/A',
+              memory: res.mem && res.maxmem
+                ? `${formatBytes(res.mem)} / ${formatBytes(res.maxmem)}`
+                : 'N/A',
+              uptime: res.uptime ? formatUptime(res.uptime) : 'N/A',
+              pid: null, // pid is not available in cluster resources
+              node: res.node,
+            }));
+        }
 
         return {
           content: [{ type: 'text', text: JSON.stringify(formatted) }],

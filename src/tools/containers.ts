@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage, ContainerInfo } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage, ContainerInfo, ClusterResource } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerContainerReadTools(
@@ -14,30 +14,67 @@ export function registerContainerReadTools(
     'list_containers',
     'List all LXC containers with status, CPU, and memory usage',
     {
-      node: z.string().optional().describe('Node name'),
+      node: z.string().optional().describe('Node name. If omitted, lists all containers in the cluster.'),
     },
     async ({ node }) => {
-      const nodeName = node || config.node;
+      try {
+        interface ContainerListOutput {
+          vmid: number;
+          name: string;
+          status: string;
+          cpu: string;
+          cores: string | number;
+          memory: string;
+          uptime: string;
+          type: string;
+          pid: number | null;
+          node?: string;
+        }
+        let formatted: ContainerListOutput[];
 
-      // Optimization: Use node-specific endpoint to avoid fetching all cluster resources
-      const containers = await proxmox.nodes.$(nodeName).lxc.$get();
+        if (node) {
+          // Optimization: Use node-specific endpoint to avoid fetching all cluster resources when node is known
+          const containers = await proxmox.nodes.$(node).lxc.$get();
+          formatted = (containers as unknown as ContainerInfo[]).map((ct) => ({
+            vmid: ct.vmid,
+            name: ct.name || `CT ${ct.vmid}`,
+            status: ct.status,
+            cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
+            cores: ct.cpus || 'N/A',
+            memory: ct.mem && ct.maxmem
+              ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
+              : 'N/A',
+            uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
+            type: ct.type || 'lxc',
+            node: node,
+          }));
+        } else {
+          // Fallback: Use cluster resources
+          const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+          formatted = (resources as unknown as ClusterResource[])
+            .filter((res) => res.type === 'lxc')
+            .map((res) => ({
+              vmid: res.vmid!,
+              name: res.name || `CT ${res.vmid}`,
+              status: res.status,
+              cpu: res.cpu ? formatPercentage(res.cpu) : 'N/A',
+              cores: res.maxcpu || 'N/A',
+              memory: res.mem && res.maxmem
+                ? `${formatBytes(res.mem)} / ${formatBytes(res.maxmem)}`
+                : 'N/A',
+              uptime: res.uptime ? formatUptime(res.uptime) : 'N/A',
+              type: 'lxc',
+              pid: null, // pid not available
+              node: res.node,
+            }));
+        }
 
-      const formatted = (containers as unknown as ContainerInfo[]).map((ct) => ({
-        vmid: ct.vmid,
-        name: ct.name || `CT ${ct.vmid}`,
-        status: ct.status,
-        cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
-        cores: ct.cpus || 'N/A',
-        memory: ct.mem && ct.maxmem 
-          ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
-          : 'N/A',
-        uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
-        type: ct.type || 'lxc',
-      }));
-
-      return {
-        content: [{ type: 'text', text: JSON.stringify(formatted) }],
-      };
+        return {
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 

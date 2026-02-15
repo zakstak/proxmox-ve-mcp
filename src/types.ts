@@ -22,6 +22,7 @@ export interface VmInfo {
   netout?: number;
   diskread?: number;
   diskwrite?: number;
+  node?: string;
 }
 
 export interface ContainerInfo {
@@ -35,6 +36,7 @@ export interface ContainerInfo {
   uptime?: number;
   pid?: number;
   type?: string;
+  node?: string;
 }
 
 export interface StorageInfo {
