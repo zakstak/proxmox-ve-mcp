@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage, VmInfo } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage, VmInfo, ClusterResource } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerVmReadTools(
@@ -15,26 +15,44 @@ export function registerVmReadTools(
     'List all QEMU virtual machines with status, CPU, and memory usage',
     {
       node: z.string().optional().describe('Node name (defaults to configured node)'),
+      all: z.boolean().optional().describe('List VMs from all nodes (cluster-wide)'),
     },
-    async ({ node }) => {
+    async ({ node, all }) => {
       try {
-        const nodeName = node || config.node;
+        let vms: (VmInfo | ClusterResource)[];
 
-        // Optimization: Use node-specific endpoint to avoid fetching all cluster resources
-        const vms = await proxmox.nodes.$(nodeName).qemu.$get();
+        if (all) {
+          // Optimization: Fetch all VMs from cluster resources if 'all' is requested
+          // This avoids N+1 requests when listing all VMs in a cluster
+          const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+          vms = (resources as unknown as ClusterResource[]).filter(
+            (r) => r.type === 'qemu'
+          );
+        } else {
+          const nodeName = node || config.node;
+          vms = (await proxmox.nodes.$(nodeName).qemu.$get()) as unknown as VmInfo[];
+        }
 
-        const formatted = (vms as unknown as VmInfo[]).map((vm) => ({
-          vmid: vm.vmid,
-          name: vm.name || `VM ${vm.vmid}`,
-          status: vm.status,
-          cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-          cores: vm.cpus || 'N/A',
-          memory: vm.mem && vm.maxmem
-            ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
-            : 'N/A',
-          uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
-          pid: vm.pid || null,
-        }));
+        const formatted = vms.map((vm) => {
+          // Normalize fields between VmInfo and ClusterResource
+          const cpus = 'cpus' in vm ? vm.cpus : (vm as ClusterResource).maxcpu;
+          const pid = 'pid' in vm ? vm.pid : null;
+          const nodeName = 'node' in vm ? vm.node : node || config.node;
+
+          return {
+            vmid: vm.vmid,
+            name: vm.name || `VM ${vm.vmid}`,
+            status: vm.status,
+            cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
+            cores: cpus || 'N/A',
+            memory: vm.mem && vm.maxmem
+              ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
+              : 'N/A',
+            uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
+            pid: pid || null,
+            node: nodeName,
+          };
+        });
 
         return {
           content: [{ type: 'text', text: JSON.stringify(formatted) }],

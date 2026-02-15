@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage, ContainerInfo } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage, ContainerInfo, ClusterResource } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerContainerReadTools(
@@ -15,29 +15,50 @@ export function registerContainerReadTools(
     'List all LXC containers with status, CPU, and memory usage',
     {
       node: z.string().optional().describe('Node name'),
+      all: z.boolean().optional().describe('List containers from all nodes (cluster-wide)'),
     },
-    async ({ node }) => {
-      const nodeName = node || config.node;
+    async ({ node, all }) => {
+      try {
+        let containers: (ContainerInfo | ClusterResource)[];
 
-      // Optimization: Use node-specific endpoint to avoid fetching all cluster resources
-      const containers = await proxmox.nodes.$(nodeName).lxc.$get();
+        if (all) {
+          // Optimization: Fetch all containers from cluster resources if 'all' is requested
+          const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+          containers = (resources as unknown as ClusterResource[]).filter(
+            (r) => r.type === 'lxc'
+          );
+        } else {
+          const nodeName = node || config.node;
+          containers = (await proxmox.nodes.$(nodeName).lxc.$get()) as unknown as ContainerInfo[];
+        }
 
-      const formatted = (containers as unknown as ContainerInfo[]).map((ct) => ({
-        vmid: ct.vmid,
-        name: ct.name || `CT ${ct.vmid}`,
-        status: ct.status,
-        cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
-        cores: ct.cpus || 'N/A',
-        memory: ct.mem && ct.maxmem 
-          ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
-          : 'N/A',
-        uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
-        type: ct.type || 'lxc',
-      }));
+        const formatted = containers.map((ct) => {
+          // Normalize fields between ContainerInfo and ClusterResource
+          const cpus = 'cpus' in ct ? ct.cpus : (ct as ClusterResource).maxcpu;
+          const nodeName = 'node' in ct ? ct.node : node || config.node;
+          const type = 'type' in ct ? ct.type : 'lxc';
 
-      return {
-        content: [{ type: 'text', text: JSON.stringify(formatted) }],
-      };
+          return {
+            vmid: ct.vmid,
+            name: ct.name || `CT ${ct.vmid}`,
+            status: ct.status,
+            cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
+            cores: cpus || 'N/A',
+            memory: ct.mem && ct.maxmem
+              ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
+              : 'N/A',
+            uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
+            type: type || 'lxc',
+            node: nodeName,
+          };
+        });
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 
