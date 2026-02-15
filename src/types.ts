@@ -12,6 +12,7 @@ export interface VmInfo {
   vmid: number;
   name?: string;
   status: string;
+  pid?: number;
   cpu?: number;
   cpus?: number;
   mem?: number;
