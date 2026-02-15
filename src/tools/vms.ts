@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
-import { formatBytes, formatUptime, formatPercentage, VmInfo } from '../types.js';
+import { formatBytes, formatUptime, formatPercentage } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerVmReadTools(
@@ -12,32 +12,54 @@ export function registerVmReadTools(
 ): void {
   server.tool(
     'list_vms',
-    'List all QEMU virtual machines with status, CPU, and memory usage',
+    'List all QEMU virtual machines with status, CPU, and memory usage. Lists across all nodes when no node is specified.',
     {
-      node: z.string().optional().describe('Node name (defaults to configured node)'),
+      node: z.string().optional().describe('Node name (omit to list across all nodes)'),
     },
     async ({ node }) => {
       try {
-        const nodeName = node || config.node;
+        if (node) {
+          const vms = await proxmox.nodes.$(node).qemu.$get({ full: true });
 
-        // Optimization: Use node-specific endpoint to avoid fetching all cluster resources
-        const vms = await proxmox.nodes.$(nodeName).qemu.$get();
+          const formatted = vms.map((vm) => ({
+            vmid: vm.vmid,
+            name: vm.name || `VM ${vm.vmid}`,
+            status: vm.status,
+            node,
+            cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
+            cores: vm.cpus || 'N/A',
+            memory: vm.mem && vm.maxmem
+              ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
+              : 'N/A',
+            uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
+            pid: vm.pid || null,
+          }));
 
-        const formatted = (vms as unknown as VmInfo[]).map((vm) => ({
-          vmid: vm.vmid,
-          name: vm.name || `VM ${vm.vmid}`,
-          status: vm.status,
-          cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-          cores: vm.cpus || 'N/A',
-          memory: vm.mem && vm.maxmem
-            ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
-            : 'N/A',
-          uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
-          pid: vm.pid || null,
-        }));
+          return {
+            content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          };
+        }
+
+        const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
+
+        const formatted = resources
+          .filter((r) => r.type === 'qemu')
+          .map((r) => ({
+            vmid: r.vmid!,
+            name: r.name || `VM ${r.vmid}`,
+            status: r.status || 'unknown',
+            node: r.node || 'unknown',
+            cpu: r.cpu ? formatPercentage(r.cpu) : 'N/A',
+            cores: r.maxcpu || 'N/A',
+            memory: r.mem && r.maxmem
+              ? `${formatBytes(r.mem)} / ${formatBytes(r.maxmem)}`
+              : 'N/A',
+            uptime: r.uptime ? formatUptime(r.uptime) : 'N/A',
+            pid: null,
+          }));
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -88,7 +110,7 @@ export function registerVmReadTools(
         };
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
         };
       } catch (error) {
         return createErrorResponse(error);

@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
+import { createErrorResponse } from '../utils/error-handler.js';
 
 export function registerSnapshotReadTools(
   server: McpServer,
@@ -17,26 +18,30 @@ export function registerSnapshotReadTools(
       node: z.string().optional().describe('Node name'),
     },
     async ({ vmid, type, node }) => {
-      const nodeName = node || config.node;
-      const theNode = proxmox.nodes.$(nodeName);
+      try {
+        const nodeName = node || config.node;
+        const theNode = proxmox.nodes.$(nodeName);
       
-      const snapshots = type === 'qemu'
-        ? await theNode.qemu.$(vmid).snapshot.$get()
-        : await theNode.lxc.$(vmid).snapshot.$get();
+        const snapshots = type === 'qemu'
+          ? await theNode.qemu.$(vmid).snapshot.$get()
+          : await theNode.lxc.$(vmid).snapshot.$get();
       
-      const formatted = snapshots
-        .filter((s) => s.name !== 'current')
-        .map((s) => ({
-          name: s.name,
-          description: s.description || '',
-          time: s.snaptime ? new Date(s.snaptime * 1000).toISOString() : null,
-          vmstate: s.vmstate === 1,
-          parent: s.parent || null,
-        }));
+        const formatted = snapshots
+          .filter((s) => s.name !== 'current')
+          .map((s) => ({
+            name: s.name,
+            description: s.description || '',
+            time: s.snaptime ? new Date(s.snaptime * 1000).toISOString() : null,
+            vmstate: s.vmstate === 1,
+            parent: s.parent || null,
+          }));
 
-      return {
-        content: [{ type: 'text', text: JSON.stringify(formatted) }],
-      };
+        return {
+          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 }
@@ -58,26 +63,30 @@ export function registerSnapshotWriteTools(
       node: z.string().optional().describe('Node name'),
     },
     async ({ vmid, snapname, description, vmstate, type, node }) => {
-      const nodeName = node || config.node;
-      const theNode = proxmox.nodes.$(nodeName);
+      try {
+        const nodeName = node || config.node;
+        const theNode = proxmox.nodes.$(nodeName);
       
-      const taskId = type === 'qemu'
-        ? await theNode.qemu.$(vmid).snapshot.$post({
-            snapname,
-            description,
-            vmstate: vmstate,
-          })
-        : await theNode.lxc.$(vmid).snapshot.$post({
-            snapname,
-            description,
-          });
+        const taskId = type === 'qemu'
+          ? await theNode.qemu.$(vmid).snapshot.$post({
+              snapname,
+              description,
+              vmstate: vmstate,
+            })
+          : await theNode.lxc.$(vmid).snapshot.$post({
+              snapname,
+              description,
+            });
       
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `Snapshot '${snapname}' creation initiated for ${type} ${vmid}. Task: ${taskId}` 
-        }],
-      };
+        return {
+          content: [{ 
+            type: 'text', 
+            text: `Snapshot '${snapname}' creation initiated for ${type} ${vmid}. Task: ${taskId}` 
+          }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 
@@ -91,19 +100,23 @@ export function registerSnapshotWriteTools(
       node: z.string().optional().describe('Node name'),
     },
     async ({ vmid, snapname, type, node }) => {
-      const nodeName = node || config.node;
-      const theNode = proxmox.nodes.$(nodeName);
+      try {
+        const nodeName = node || config.node;
+        const theNode = proxmox.nodes.$(nodeName);
       
-      const taskId = type === 'qemu'
-        ? await theNode.qemu.$(vmid).snapshot.$(snapname).rollback.$post()
-        : await theNode.lxc.$(vmid).snapshot.$(snapname).rollback.$post();
+        const taskId = type === 'qemu'
+          ? await theNode.qemu.$(vmid).snapshot.$(snapname).rollback.$post()
+          : await theNode.lxc.$(vmid).snapshot.$(snapname).rollback.$post();
       
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `Rollback to '${snapname}' initiated for ${type} ${vmid}. Task: ${taskId}` 
-        }],
-      };
+        return {
+          content: [{ 
+            type: 'text', 
+            text: `Rollback to '${snapname}' initiated for ${type} ${vmid}. Task: ${taskId}` 
+          }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 
@@ -117,19 +130,23 @@ export function registerSnapshotWriteTools(
       node: z.string().optional().describe('Node name'),
     },
     async ({ vmid, snapname, type, node }) => {
-      const nodeName = node || config.node;
-      const theNode = proxmox.nodes.$(nodeName);
+      try {
+        const nodeName = node || config.node;
+        const theNode = proxmox.nodes.$(nodeName);
       
-      const taskId = type === 'qemu'
-        ? await theNode.qemu.$(vmid).snapshot.$(snapname).$delete()
-        : await theNode.lxc.$(vmid).snapshot.$(snapname).$delete();
+        const taskId = type === 'qemu'
+          ? await theNode.qemu.$(vmid).snapshot.$(snapname).$delete()
+          : await theNode.lxc.$(vmid).snapshot.$(snapname).$delete();
       
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `Snapshot '${snapname}' deletion initiated for ${type} ${vmid}. Task: ${taskId}` 
-        }],
-      };
+        return {
+          content: [{ 
+            type: 'text', 
+            text: `Snapshot '${snapname}' deletion initiated for ${type} ${vmid}. Task: ${taskId}` 
+          }],
+        };
+      } catch (error) {
+        return createErrorResponse(error);
+      }
     }
   );
 }
