@@ -34,8 +34,9 @@ export function registerStorageReadTools(
           usagePercent: s.used_fraction ? formatPercentage(s.used_fraction) : 'N/A',
         }));
 
+        // Optimize: Compact JSON to reduce payload size
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -68,8 +69,9 @@ export function registerStorageReadTools(
           ctime: item.ctime ? new Date(item.ctime * 1000).toISOString() : null,
         }));
 
+        // Optimize: Compact JSON to reduce payload size
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);

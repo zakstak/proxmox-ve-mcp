@@ -26,18 +26,23 @@ export function registerSnapshotReadTools(
           ? await theNode.qemu.$(vmid).snapshot.$get()
           : await theNode.lxc.$(vmid).snapshot.$get();
       
-        const formatted = snapshots
-          .filter((s) => s.name !== 'current')
-          .map((s) => ({
-            name: s.name,
-            description: s.description || '',
-            time: s.snaptime ? new Date(s.snaptime * 1000).toISOString() : null,
-            vmstate: s.vmstate === 1,
-            parent: s.parent || null,
-          }));
+        // Optimize: Single-pass loop to avoid intermediate array allocation from filter().map()
+        const formatted = [];
+        for (const s of snapshots) {
+          if (s.name !== 'current') {
+            formatted.push({
+              name: s.name,
+              description: s.description || '',
+              time: s.snaptime ? new Date(s.snaptime * 1000).toISOString() : null,
+              vmstate: s.vmstate === 1,
+              parent: s.parent || null,
+            });
+          }
+        }
 
+        // Optimize: Compact JSON to reduce payload size
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
