@@ -36,30 +36,33 @@ export function registerVmReadTools(
           }));
 
           return {
-            content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+            content: [{ type: 'text', text: JSON.stringify(formatted) }],
           };
         }
 
         const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
 
-        const formatted = resources
-          .filter((r) => r.type === 'qemu')
-          .map((r) => ({
-            vmid: r.vmid!,
-            name: r.name || `VM ${r.vmid}`,
-            status: r.status || 'unknown',
-            node: r.node || 'unknown',
-            cpu: r.cpu ? formatPercentage(r.cpu) : 'N/A',
-            cores: r.maxcpu || 'N/A',
-            memory: r.mem && r.maxmem
-              ? `${formatBytes(r.mem)} / ${formatBytes(r.maxmem)}`
-              : 'N/A',
-            uptime: r.uptime ? formatUptime(r.uptime) : 'N/A',
-            pid: null,
-          }));
+        const formatted = [];
+        for (const r of resources) {
+          if (r.type === 'qemu') {
+            formatted.push({
+              vmid: r.vmid!,
+              name: r.name || `VM ${r.vmid}`,
+              status: r.status || 'unknown',
+              node: r.node || 'unknown',
+              cpu: r.cpu ? formatPercentage(r.cpu) : 'N/A',
+              cores: r.maxcpu || 'N/A',
+              memory: r.mem && r.maxmem
+                ? `${formatBytes(r.mem)} / ${formatBytes(r.maxmem)}`
+                : 'N/A',
+              uptime: r.uptime ? formatUptime(r.uptime) : 'N/A',
+              pid: null,
+            });
+          }
+        }
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -110,7 +113,7 @@ export function registerVmReadTools(
         };
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
