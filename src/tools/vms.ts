@@ -21,45 +21,53 @@ export function registerVmReadTools(
         if (node) {
           const vms = await proxmox.nodes.$(node).qemu.$get({ full: true });
 
-          const formatted = vms.map((vm) => ({
-            vmid: vm.vmid,
-            name: vm.name || `VM ${vm.vmid}`,
-            status: vm.status,
-            node,
-            cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
-            cores: vm.cpus || 'N/A',
-            memory: vm.mem && vm.maxmem
-              ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
-              : 'N/A',
-            uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
-            pid: vm.pid || null,
-          }));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const formatted: any[] = [];
+          for (const vm of vms) {
+            formatted.push({
+              vmid: vm.vmid,
+              name: vm.name || `VM ${vm.vmid}`,
+              status: vm.status,
+              node,
+              cpu: vm.cpu ? formatPercentage(vm.cpu) : 'N/A',
+              cores: vm.cpus || 'N/A',
+              memory: vm.mem && vm.maxmem
+                ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
+                : 'N/A',
+              uptime: vm.uptime ? formatUptime(vm.uptime) : 'N/A',
+              pid: vm.pid || null,
+            });
+          }
 
           return {
-            content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+            content: [{ type: 'text', text: JSON.stringify(formatted) }],
           };
         }
 
         const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
 
-        const formatted = resources
-          .filter((r) => r.type === 'qemu')
-          .map((r) => ({
-            vmid: r.vmid!,
-            name: r.name || `VM ${r.vmid}`,
-            status: r.status || 'unknown',
-            node: r.node || 'unknown',
-            cpu: r.cpu ? formatPercentage(r.cpu) : 'N/A',
-            cores: r.maxcpu || 'N/A',
-            memory: r.mem && r.maxmem
-              ? `${formatBytes(r.mem)} / ${formatBytes(r.maxmem)}`
-              : 'N/A',
-            uptime: r.uptime ? formatUptime(r.uptime) : 'N/A',
-            pid: null,
-          }));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const formatted: any[] = [];
+        for (const r of resources) {
+          if (r.type === 'qemu') {
+            formatted.push({
+              vmid: r.vmid!,
+              name: r.name || `VM ${r.vmid}`,
+              status: r.status || 'unknown',
+              node: r.node || 'unknown',
+              cpu: r.cpu ? formatPercentage(r.cpu) : 'N/A',
+              cores: r.maxcpu || 'N/A',
+              memory: r.mem && r.maxmem
+                ? `${formatBytes(r.mem)} / ${formatBytes(r.maxmem)}`
+                : 'N/A',
+              uptime: r.uptime ? formatUptime(r.uptime) : 'N/A',
+              pid: null,
+            });
+          }
+        }
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -110,7 +118,7 @@ export function registerVmReadTools(
         };
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);

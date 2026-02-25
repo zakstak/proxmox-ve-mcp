@@ -21,45 +21,53 @@ export function registerContainerReadTools(
         if (node) {
           const containers = await proxmox.nodes.$(node).lxc.$get();
 
-          const formatted = containers.map((ct) => ({
-            vmid: ct.vmid,
-            name: ct.name || `CT ${ct.vmid}`,
-            status: ct.status,
-            node,
-            cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
-            cores: ct.cpus || 'N/A',
-            memory: ct.mem && ct.maxmem
-              ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
-              : 'N/A',
-            uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
-            type: ct.type || 'lxc',
-          }));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const formatted: any[] = [];
+          for (const ct of containers) {
+            formatted.push({
+              vmid: ct.vmid,
+              name: ct.name || `CT ${ct.vmid}`,
+              status: ct.status,
+              node,
+              cpu: ct.cpu ? formatPercentage(ct.cpu) : 'N/A',
+              cores: ct.cpus || 'N/A',
+              memory: ct.mem && ct.maxmem
+                ? `${formatBytes(ct.mem)} / ${formatBytes(ct.maxmem)}`
+                : 'N/A',
+              uptime: ct.uptime ? formatUptime(ct.uptime) : 'N/A',
+              type: ct.type || 'lxc',
+            });
+          }
 
           return {
-            content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+            content: [{ type: 'text', text: JSON.stringify(formatted) }],
           };
         }
 
         const resources = await proxmox.cluster.resources.$get({ type: 'vm' });
 
-        const formatted = resources
-          .filter((r) => r.type === 'lxc')
-          .map((r) => ({
-            vmid: r.vmid!,
-            name: r.name || `CT ${r.vmid}`,
-            status: r.status || 'unknown',
-            node: r.node || 'unknown',
-            cpu: r.cpu ? formatPercentage(r.cpu) : 'N/A',
-            cores: r.maxcpu || 'N/A',
-            memory: r.mem && r.maxmem
-              ? `${formatBytes(r.mem)} / ${formatBytes(r.maxmem)}`
-              : 'N/A',
-            uptime: r.uptime ? formatUptime(r.uptime) : 'N/A',
-            type: 'lxc',
-          }));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const formatted: any[] = [];
+        for (const r of resources) {
+          if (r.type === 'lxc') {
+            formatted.push({
+              vmid: r.vmid!,
+              name: r.name || `CT ${r.vmid}`,
+              status: r.status || 'unknown',
+              node: r.node || 'unknown',
+              cpu: r.cpu ? formatPercentage(r.cpu) : 'N/A',
+              cores: r.maxcpu || 'N/A',
+              memory: r.mem && r.maxmem
+                ? `${formatBytes(r.mem)} / ${formatBytes(r.maxmem)}`
+                : 'N/A',
+              uptime: r.uptime ? formatUptime(r.uptime) : 'N/A',
+              type: 'lxc',
+            });
+          }
+        }
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -109,7 +117,7 @@ export function registerContainerReadTools(
         };
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
