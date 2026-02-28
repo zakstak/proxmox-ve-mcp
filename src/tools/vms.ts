@@ -36,7 +36,7 @@ export function registerVmReadTools(
           }));
 
           return {
-            content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+            content: [{ type: 'text', text: JSON.stringify(formatted) }], // Optimize: use compact JSON serialization to reduce payload size and serialization time
           };
         }
 
@@ -59,7 +59,7 @@ export function registerVmReadTools(
           }));
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }], // Optimize: use compact JSON serialization to reduce payload size and serialization time
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -110,7 +110,7 @@ export function registerVmReadTools(
         };
 
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }], // Optimize: use compact JSON serialization to reduce payload size and serialization time
         };
       } catch (error) {
         return createErrorResponse(error);
