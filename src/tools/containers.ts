@@ -35,8 +35,9 @@ export function registerContainerReadTools(
             type: ct.type || 'lxc',
           }));
 
+          // Optimize: Use compact JSON serialization to reduce payload size and token usage
           return {
-            content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+            content: [{ type: 'text', text: JSON.stringify(formatted) }],
           };
         }
 
@@ -58,8 +59,9 @@ export function registerContainerReadTools(
             type: 'lxc',
           }));
 
+        // Optimize: Use compact JSON serialization to reduce payload size and token usage
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -108,8 +110,9 @@ export function registerContainerReadTools(
           features: ctConfig.features || '',
         };
 
+        // Optimize: Use compact JSON serialization to reduce payload size and token usage
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);

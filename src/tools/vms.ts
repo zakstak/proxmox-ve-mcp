@@ -35,8 +35,9 @@ export function registerVmReadTools(
             pid: vm.pid || null,
           }));
 
+          // Optimize: Use compact JSON serialization to reduce payload size and token usage
           return {
-            content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+            content: [{ type: 'text', text: JSON.stringify(formatted) }],
           };
         }
 
@@ -58,8 +59,9 @@ export function registerVmReadTools(
             pid: null,
           }));
 
+        // Optimize: Use compact JSON serialization to reduce payload size and token usage
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -109,8 +111,9 @@ export function registerVmReadTools(
           bios: vmConfig.bios || 'seabios',
         };
 
+        // Optimize: Use compact JSON serialization to reduce payload size and token usage
         return {
-          content: [{ type: 'text', text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
