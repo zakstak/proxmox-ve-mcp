@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { createErrorResponse } from '../utils/error-handler.js';
+import { nodeNameSchema } from '../utils/validators.js';
 
 export function registerTaskReadTools(
   server: McpServer,
@@ -13,7 +14,7 @@ export function registerTaskReadTools(
     'list_tasks',
     'List recent tasks on a node',
     {
-      node: z.string().optional().describe('Node name'),
+      node: nodeNameSchema.optional().describe('Node name'),
       limit: z.number().int().min(1).max(100).optional().describe('Max tasks to return'),
       vmid: z.number().int().optional().describe('Filter by VM/CT ID'),
     },
@@ -50,7 +51,7 @@ export function registerTaskReadTools(
     'Get status and log of a specific task',
     {
       upid: z.string().describe('Task UPID (unique task ID)'),
-      node: z.string().optional().describe('Node name'),
+      node: nodeNameSchema.optional().describe('Node name'),
     },
     async ({ upid, node }) => {
       try {
@@ -93,7 +94,7 @@ export function registerTaskWriteTools(
     'Attempt to stop a running task',
     {
       upid: z.string().describe('Task UPID'),
-      node: z.string().optional().describe('Node name'),
+      node: nodeNameSchema.optional().describe('Node name'),
     },
     async ({ upid, node }) => {
       try {

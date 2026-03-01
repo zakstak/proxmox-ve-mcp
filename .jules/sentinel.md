@@ -1,0 +1,4 @@
+## 2024-05-24 - Missing Input Validation on Identifier Parameters
+**Vulnerability:** MCP tool definitions were using permissive `z.string()` types for identifier parameters like `node`, `storage`, `snapname`, and `name`. This allowed potentially harmful input containing path traversal characters (e.g., `../`) to be incorporated into proxmox-api URLs without validation.
+**Learning:** Even when using a library (`proxmox-api`) that URL-encodes components, allowing permissive strings for critical identifiers is risky and can lead to unexpected backend behavior or bypasses. Identifiers should always be strictly validated against allowed character sets.
+**Prevention:** Always use restrictive, regex-based validation for string inputs representing resource identifiers or names. In this case, introduced and used standard Zod validation schemas (`nodeNameSchema`, `storageNameSchema`, etc.) that only allow specific sets of safe characters and a maximum length.

@@ -4,6 +4,7 @@ import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatPercentage } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
+import { nodeNameSchema, storageNameSchema } from '../utils/validators.js';
 
 export function registerStorageReadTools(
   server: McpServer,
@@ -14,7 +15,7 @@ export function registerStorageReadTools(
     'list_storage',
     'List all storage pools with usage and status',
     {
-      node: z.string().optional().describe('Node name'),
+      node: nodeNameSchema.optional().describe('Node name'),
     },
     async ({ node }) => {
       try {
@@ -47,8 +48,8 @@ export function registerStorageReadTools(
     'get_storage_content',
     'List content of a storage pool (ISOs, disk images, templates)',
     {
-      storage: z.string().describe('Storage name'),
-      node: z.string().optional().describe('Node name'),
+      storage: storageNameSchema.describe('Storage name'),
+      node: nodeNameSchema.optional().describe('Node name'),
       content: z.string().optional().describe('Filter by content type (images, iso, vztmpl, backup)'),
     },
     async ({ storage, node, content }) => {

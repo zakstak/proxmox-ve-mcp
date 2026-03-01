@@ -1,9 +1,10 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+
 import type { ProxmoxClient } from '../proxmox-client.js';
 import type { Config } from '../config.js';
 import { formatBytes, formatUptime, formatPercentage } from '../types.js';
 import { createErrorResponse } from '../utils/error-handler.js';
+import { nodeNameSchema } from '../utils/validators.js';
 
 export function registerNodeReadTools(
   server: McpServer,
@@ -48,7 +49,7 @@ export function registerNodeReadTools(
     'get_node_status',
     'Get detailed status of a specific node including CPU, memory, network, and disk usage',
     {
-      node: z.string().optional().describe('Node name (defaults to configured node)'),
+      node: nodeNameSchema.optional().describe('Node name (defaults to configured node)'),
     },
     async ({ node }) => {
       try {
