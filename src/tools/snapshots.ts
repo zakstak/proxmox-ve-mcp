@@ -15,7 +15,7 @@ export function registerSnapshotReadTools(
     {
       vmid: z.number().int().positive().describe('VM or container ID'),
       type: z.enum(['qemu', 'lxc']).default('qemu').describe('Resource type'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid node name').optional().describe('Node name'),
     },
     async ({ vmid, type, node }) => {
       try {
@@ -56,11 +56,11 @@ export function registerSnapshotWriteTools(
     'Create a snapshot of a VM or container',
     {
       vmid: z.number().int().positive().describe('VM or container ID'),
-      snapname: z.string().describe('Snapshot name'),
+      snapname: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid snapshot name').describe('Snapshot name'),
       description: z.string().optional().describe('Snapshot description'),
       vmstate: z.boolean().optional().describe('Include VM RAM state'),
       type: z.enum(['qemu', 'lxc']).default('qemu').describe('Resource type'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid node name').optional().describe('Node name'),
     },
     async ({ vmid, snapname, description, vmstate, type, node }) => {
       try {
@@ -95,9 +95,9 @@ export function registerSnapshotWriteTools(
     'Rollback a VM or container to a snapshot',
     {
       vmid: z.number().int().positive().describe('VM or container ID'),
-      snapname: z.string().describe('Snapshot name to rollback to'),
+      snapname: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid snapshot name').describe('Snapshot name to rollback to'),
       type: z.enum(['qemu', 'lxc']).default('qemu').describe('Resource type'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid node name').optional().describe('Node name'),
     },
     async ({ vmid, snapname, type, node }) => {
       try {
@@ -125,9 +125,9 @@ export function registerSnapshotWriteTools(
     'Delete a snapshot from a VM or container',
     {
       vmid: z.number().int().positive().describe('VM or container ID'),
-      snapname: z.string().describe('Snapshot name to delete'),
+      snapname: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid snapshot name').describe('Snapshot name to delete'),
       type: z.enum(['qemu', 'lxc']).default('qemu').describe('Resource type'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid node name').optional().describe('Node name'),
     },
     async ({ vmid, snapname, type, node }) => {
       try {

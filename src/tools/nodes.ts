@@ -48,7 +48,7 @@ export function registerNodeReadTools(
     'get_node_status',
     'Get detailed status of a specific node including CPU, memory, network, and disk usage',
     {
-      node: z.string().optional().describe('Node name (defaults to configured node)'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid node name').optional().describe('Node name (defaults to configured node)'),
     },
     async ({ node }) => {
       try {

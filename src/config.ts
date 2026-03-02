@@ -4,7 +4,7 @@ import 'dotenv/config';
 const configSchema = z.object({
   host: z.string().min(1),
   port: z.coerce.number().default(8006),
-  node: z.string().min(1),
+  node: z.string().regex(/^[a-zA-Z0-9_-]+$/, 'Invalid node name'),
   tokenId: z.string().min(1),
   tokenSecret: z.string().min(1),
   verifySsl: z
