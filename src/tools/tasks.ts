@@ -13,7 +13,7 @@ export function registerTaskReadTools(
     'list_tasks',
     'List recent tasks on a node',
     {
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
       limit: z.number().int().min(1).max(100).optional().describe('Max tasks to return'),
       vmid: z.number().int().optional().describe('Filter by VM/CT ID'),
     },
@@ -49,8 +49,8 @@ export function registerTaskReadTools(
     'get_task_status',
     'Get status and log of a specific task',
     {
-      upid: z.string().describe('Task UPID (unique task ID)'),
-      node: z.string().optional().describe('Node name'),
+      upid: z.string().regex(/^[a-zA-Z0-9_:@.-]+$/).describe('Task UPID (unique task ID)'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
     },
     async ({ upid, node }) => {
       try {
@@ -92,8 +92,8 @@ export function registerTaskWriteTools(
     'stop_task',
     'Attempt to stop a running task',
     {
-      upid: z.string().describe('Task UPID'),
-      node: z.string().optional().describe('Node name'),
+      upid: z.string().regex(/^[a-zA-Z0-9_:@.-]+$/).describe('Task UPID'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
     },
     async ({ upid, node }) => {
       try {

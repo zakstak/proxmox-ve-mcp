@@ -14,7 +14,7 @@ export function registerVmReadTools(
     'list_vms',
     'List all QEMU virtual machines with status, CPU, and memory usage. Lists across all nodes when no node is specified.',
     {
-      node: z.string().optional().describe('Node name (omit to list across all nodes)'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name (omit to list across all nodes)'),
     },
     async ({ node }) => {
       try {
@@ -72,7 +72,7 @@ export function registerVmReadTools(
     'Get detailed status and configuration of a specific VM',
     {
       vmid: z.number().int().positive().describe('VM ID'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
     },
     async ({ vmid, node }) => {
       try {
@@ -129,7 +129,7 @@ export function registerVmWriteTools(
     'Start a stopped virtual machine',
     {
       vmid: z.number().int().positive().describe('VM ID to start'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
     },
     async ({ vmid, node }) => {
       try {
@@ -153,7 +153,7 @@ export function registerVmWriteTools(
     'Stop a running virtual machine (graceful ACPI shutdown)',
     {
       vmid: z.number().int().positive().describe('VM ID to stop'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
       timeout: z.number().int().optional().describe('Timeout in seconds'),
     },
     async ({ vmid, node, timeout }) => {
@@ -180,7 +180,7 @@ export function registerVmWriteTools(
     'Gracefully shutdown a VM via ACPI, optionally force stop if timeout exceeded',
     {
       vmid: z.number().int().positive().describe('VM ID'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
       forceStop: z.boolean().optional().describe('Force stop after timeout'),
       timeout: z.number().int().optional().describe('Timeout in seconds'),
     },
@@ -209,7 +209,7 @@ export function registerVmWriteTools(
     'Reboot a running virtual machine',
     {
       vmid: z.number().int().positive().describe('VM ID'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
     },
     async ({ vmid, node }) => {
       try {
@@ -233,7 +233,7 @@ export function registerVmWriteTools(
     'Suspend a running VM to RAM',
     {
       vmid: z.number().int().positive().describe('VM ID'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
     },
     async ({ vmid, node }) => {
       try {
@@ -257,7 +257,7 @@ export function registerVmWriteTools(
     'Resume a suspended VM',
     {
       vmid: z.number().int().positive().describe('VM ID'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
     },
     async ({ vmid, node }) => {
       try {
@@ -282,8 +282,8 @@ export function registerVmWriteTools(
     {
       vmid: z.number().int().positive().describe('Source VM ID'),
       newid: z.number().int().positive().optional().describe('New VM ID (auto-generated if omitted)'),
-      name: z.string().optional().describe('Name for the new VM'),
-      node: z.string().optional().describe('Node name'),
+      name: z.string().regex(/^[a-zA-Z0-9_.-]+$/).optional().describe('Name for the new VM'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
       full: z.boolean().optional().describe('Create full clone (not linked)'),
     },
     async ({ vmid, newid, name, node, full }) => {
@@ -318,7 +318,7 @@ export function registerVmWriteTools(
     'Delete a virtual machine (must be stopped)',
     {
       vmid: z.number().int().positive().describe('VM ID to delete'),
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
       purge: z.boolean().optional().describe('Remove from backup jobs and HA'),
     },
     async ({ vmid, node, purge }) => {

@@ -14,7 +14,7 @@ export function registerStorageReadTools(
     'list_storage',
     'List all storage pools with usage and status',
     {
-      node: z.string().optional().describe('Node name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
     },
     async ({ node }) => {
       try {
@@ -47,9 +47,9 @@ export function registerStorageReadTools(
     'get_storage_content',
     'List content of a storage pool (ISOs, disk images, templates)',
     {
-      storage: z.string().describe('Storage name'),
-      node: z.string().optional().describe('Node name'),
-      content: z.string().optional().describe('Filter by content type (images, iso, vztmpl, backup)'),
+      storage: z.string().regex(/^[a-zA-Z0-9_-]+$/).describe('Storage name'),
+      node: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional().describe('Node name'),
+      content: z.string().regex(/^[a-zA-Z0-9_,-]+$/).optional().describe('Filter by content type (images, iso, vztmpl, backup)'),
     },
     async ({ storage, node, content }) => {
       try {
