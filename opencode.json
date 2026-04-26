@@ -1,0 +1,17 @@
+{
+  "mcp": {
+    "proxmox_readonly": {
+      "type": "local",
+      "command": ["node", "dist/index-readonly.js"],
+      "environment": {
+        "PROXMOX_HOST": "{env:PROXMOX_HOST}",
+        "PROXMOX_PORT": "{env:PROXMOX_PORT}",
+        "PROXMOX_NODE": "{env:PROXMOX_NODE}",
+        "PROXMOX_TOKEN_ID": "{env:PROXMOX_TOKEN_ID}",
+        "PROXMOX_TOKEN_SECRET": "{env:PROXMOX_TOKEN_SECRET}",
+        "PROXMOX_VERIFY_SSL": "{env:PROXMOX_VERIFY_SSL}"
+      },
+      "enabled": true
+    }
+  }
+}
