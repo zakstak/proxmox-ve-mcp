@@ -1,7 +1,7 @@
 {
   "name": "proxmox-ve-mcp",
   "version": "1.0.0",
-  "description": "MCP server for Proxmox VE management with SAGA security architecture",
+  "description": "Skills-first Proxmox VE onboarding for OpenCode with a read-only default and legacy MCP runtime compatibility",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -15,6 +15,9 @@
   },
   "keywords": [
     "proxmox",
+    "opencode",
+    "skills",
+    "legacy-mcp",
     "mcp",
     "model-context-protocol",
     "virtualization",
