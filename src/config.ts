@@ -10,7 +10,7 @@ const configSchema = z.object({
   verifySsl: z
     .string()
     .transform((val) => val.toLowerCase() === 'true')
-    .default('false'),
+    .default(false),
 });
 
 export type Config = z.infer<typeof configSchema>;
