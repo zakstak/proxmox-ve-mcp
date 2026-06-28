@@ -9,8 +9,8 @@ const configSchema = z.object({
   tokenSecret: z.string().min(1),
   verifySsl: z
     .string()
-    .default('false')
-    .transform((val) => val.toLowerCase() === 'true'),
+    .transform((val) => val.toLowerCase() === 'true')
+    .default(false),
 });
 
 export type Config = z.infer<typeof configSchema>;
