@@ -4,6 +4,8 @@ This repo is now skills-first and ships a committed root `opencode.json` that gi
 
 ## Quick start
 
+Requires Node.js 20.19 or newer.
+
 1. Install dependencies and build the runtime.
 
    ```bash
