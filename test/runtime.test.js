@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { once } from "node:events";
+import { createServer } from "node:http";
 import { test } from "node:test";
+import proxmoxApi from "proxmox-api";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -7,6 +10,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { z } from "zod";
 import { registerReadOnlyTools } from "../dist/tools/index.js";
 import { formatBytes, formatPercentage, formatUptime } from "../dist/types.js";
+import { createFetch } from "../dist/utils/http-client.js";
 import {
   createErrorResponse,
   getErrorMessage,
@@ -153,5 +157,54 @@ test("formatters and error responses retain their public output", () => {
   assert.equal(
     getErrorMessage(apiError),
     'Proxmox API Error 403 Forbidden: {"message":"permission denied"}',
+  );
+});
+
+test("Undici adapter retains Proxmox token auth and API error behavior", async (t) => {
+  const requests = [];
+  const mock = createServer((request, response) => {
+    requests.push({
+      method: request.method,
+      url: request.url,
+      authorization: request.headers.authorization,
+    });
+    response.setHeader("Content-Type", "application/json;charset=UTF-8");
+    if (requests.length === 1) {
+      response.end(JSON.stringify({ data: [{ node: "mock-node" }] }));
+    } else {
+      response.statusCode = 403;
+      response.end(JSON.stringify({ errors: "fixture permission denied" }));
+    }
+  });
+  t.after(
+    () =>
+      new Promise((resolve, reject) => {
+        mock.close((error) => (error ? reject(error) : resolve()));
+        mock.closeAllConnections();
+      }),
+  );
+  mock.listen(0, "127.0.0.1");
+  await once(mock, "listening");
+  // HTTP is confined to the local mock. Production defaults remain HTTPS.
+  const proxmox = proxmoxApi({
+    host: "127.0.0.1",
+    port: mock.address().port,
+    schema: "http",
+    tokenID: config.tokenId,
+    tokenSecret: config.tokenSecret,
+    fetch: createFetch(true),
+  });
+  assert.deepEqual(await proxmox.nodes.$get(), [{ node: "mock-node" }]);
+  await assert.rejects(
+    proxmox.nodes.$get(),
+    /403 Forbidden.*fixture permission denied/,
+  );
+  assert.deepEqual(
+    requests,
+    Array(2).fill({
+      method: "GET",
+      url: "/api2/json/nodes",
+      authorization: `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
+    }),
   );
 });

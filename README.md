@@ -124,6 +124,13 @@ the whole repository. This refresh was validated against Pragma commit
 read-only tool boundary, and mock responses. These tests never connect to a live
 Proxmox cluster or perform cluster writes.
 
+Dependencies retain the Node.js 20.19 minimum: Undici 7 is the latest compatible
+major (Undici 8 requires Node.js 22.19). TypeScript 6.0.3 is the latest version
+supported by the current TypeScript ESLint parser's `<6.1.0` peer range; Node
+types follow the supported Node 20 baseline. The HTTP adapter test uses only a
+loopback mock to verify token headers, GET requests and API errors across the
+Undici upgrade.
+
 ```bash
 npm run dev            # Hot reload (full server)
 npm run dev:readonly   # Hot reload (read-only server)
