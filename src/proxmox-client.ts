@@ -1,6 +1,6 @@
-import proxmoxApi from 'proxmox-api';
-import type { Config } from './config.js';
-import { createFetch } from './utils/http-client.js';
+import proxmoxApi from "proxmox-api";
+import type { Config } from "./config.js";
+import { createFetch } from "./utils/http-client.js";
 
 export function createProxmoxClient(config: Config) {
   const customFetch = createFetch(config.verifySsl);

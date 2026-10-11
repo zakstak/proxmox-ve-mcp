@@ -1,4 +1,4 @@
-import { fetch, Agent, type RequestInit, type Response } from 'undici';
+import { fetch, Agent, type RequestInit, type Response } from "undici";
 
 export function createFetch(verifySsl: boolean) {
   const agent = new Agent({
