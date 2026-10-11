@@ -72,7 +72,7 @@ export interface TaskInfo {
 
 export interface ClusterResource {
   id: string;
-  type: 'qemu' | 'lxc' | 'openvz' | 'node' | 'storage' | 'pool';
+  type: "qemu" | "lxc" | "openvz" | "node" | "storage" | "pool";
   vmid?: number;
   node: string;
   status: string;
@@ -85,7 +85,7 @@ export interface ClusterResource {
   disk?: number;
 }
 
-const BYTES_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
+const BYTES_UNITS = ["B", "KB", "MB", "GB", "TB"];
 
 export function formatBytes(bytes: number): string {
   let size = bytes;
@@ -103,7 +103,7 @@ export function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  
+
   if (days > 0) return `${days}d ${hours}h`;
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;

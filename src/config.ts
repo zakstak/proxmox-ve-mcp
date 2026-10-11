@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import 'dotenv/config';
+import { z } from "zod";
+import "dotenv/config";
 
 const configSchema = z.object({
   host: z.string().min(1),
@@ -9,8 +9,8 @@ const configSchema = z.object({
   tokenSecret: z.string().min(1),
   verifySsl: z
     .string()
-    .default('false')
-    .transform((val) => val.toLowerCase() === 'true'),
+    .default("false")
+    .transform((val) => val.toLowerCase() === "true"),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -26,9 +26,14 @@ export function loadConfig(): Config {
   });
 
   if (!result.success) {
-    console.error('[MCP] Configuration error:', JSON.stringify(result.error.format(), null, 2));
-    console.error('[MCP] Required environment variables:');
-    console.error('  PROXMOX_HOST, PROXMOX_NODE, PROXMOX_TOKEN_ID, PROXMOX_TOKEN_SECRET');
+    console.error(
+      "[MCP] Configuration error:",
+      JSON.stringify(result.error.format(), null, 2),
+    );
+    console.error("[MCP] Required environment variables:");
+    console.error(
+      "  PROXMOX_HOST, PROXMOX_NODE, PROXMOX_TOKEN_ID, PROXMOX_TOKEN_SECRET",
+    );
     process.exit(1);
   }
 
