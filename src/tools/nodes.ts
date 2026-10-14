@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+import { nodeNameSchema } from "../utils/resource-schemas.js";
 import type { ProxmoxClient } from "../proxmox-client.js";
 import type { Config } from "../config.js";
 import { formatBytes, formatUptime, formatPercentage } from "../types.js";
@@ -52,8 +52,7 @@ export function registerNodeReadTools(
     "get_node_status",
     "Get detailed status of a specific node including CPU, memory, network, and disk usage",
     {
-      node: z
-        .string()
+      node: nodeNameSchema
         .optional()
         .describe("Node name (defaults to configured node)"),
     },

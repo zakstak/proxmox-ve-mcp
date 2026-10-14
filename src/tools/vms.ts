@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { nodeNameSchema, vmIdSchema } from "../utils/resource-schemas.js";
 import type { ProxmoxClient } from "../proxmox-client.js";
 import type { Config } from "../config.js";
 import { formatBytes, formatUptime, formatPercentage } from "../types.js";
@@ -12,46 +13,22 @@ export function registerVmReadTools(
 ): void {
   server.tool(
     "list_vms",
-    "List all QEMU virtual machines with status, CPU, and memory usage. Lists across all nodes when no node is specified.",
+    "List QEMU virtual machines from cached cluster inventory with status, CPU, and memory usage. Optionally filter by node. PID is unavailable.",
     {
-      node: z
-        .string()
+      node: nodeNameSchema
         .optional()
         .describe("Node name (omit to list across all nodes)"),
     },
     async ({ node }) => {
       try {
-        if (node) {
-          const vms = await proxmox.nodes.$(node).qemu.$get({ full: true });
-
-          const formatted = vms.map((vm) => ({
-            vmid: vm.vmid,
-            name: vm.name || `VM ${vm.vmid}`,
-            status: vm.status,
-            node,
-            cpu: vm.cpu ? formatPercentage(vm.cpu) : "N/A",
-            cores: vm.cpus || "N/A",
-            memory:
-              vm.mem && vm.maxmem
-                ? `${formatBytes(vm.mem)} / ${formatBytes(vm.maxmem)}`
-                : "N/A",
-            uptime: vm.uptime ? formatUptime(vm.uptime) : "N/A",
-            pid: vm.pid || null,
-          }));
-
-          return {
-            content: [
-              { type: "text", text: JSON.stringify(formatted, null, 2) },
-            ],
-          };
-        }
-
         const resources = await proxmox.cluster.resources.$get({ type: "vm" });
 
-        const formatted = resources
-          .filter((r) => r.type === "qemu")
-          .map((r) => ({
-            vmid: r.vmid!,
+        const formatted = [];
+        for (const r of resources) {
+          if (r.type !== "qemu" || (node !== undefined && r.node !== node))
+            continue;
+          formatted.push({
+            vmid: vmIdSchema.parse(r.vmid),
             name: r.name || `VM ${r.vmid}`,
             status: r.status || "unknown",
             node: r.node || "unknown",
@@ -63,10 +40,11 @@ export function registerVmReadTools(
                 : "N/A",
             uptime: r.uptime ? formatUptime(r.uptime) : "N/A",
             pid: null,
-          }));
+          });
+        }
 
         return {
-          content: [{ type: "text", text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -78,8 +56,8 @@ export function registerVmReadTools(
     "get_vm_status",
     "Get detailed status and configuration of a specific VM",
     {
-      vmid: z.number().int().positive().describe("VM ID"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("VM ID"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, node }) => {
       try {
@@ -117,7 +95,7 @@ export function registerVmReadTools(
         };
 
         return {
-          content: [{ type: "text", text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -135,8 +113,8 @@ export function registerVmWriteTools(
     "start_vm",
     "Start a stopped virtual machine",
     {
-      vmid: z.number().int().positive().describe("VM ID to start"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("VM ID to start"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, node }) => {
       try {
@@ -164,8 +142,8 @@ export function registerVmWriteTools(
     "stop_vm",
     "Stop a running virtual machine (graceful ACPI shutdown)",
     {
-      vmid: z.number().int().positive().describe("VM ID to stop"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("VM ID to stop"),
+      node: nodeNameSchema.optional().describe("Node name"),
       timeout: z.number().int().optional().describe("Timeout in seconds"),
     },
     async ({ vmid, node, timeout }) => {
@@ -196,8 +174,8 @@ export function registerVmWriteTools(
     "shutdown_vm",
     "Gracefully shutdown a VM via ACPI, optionally force stop if timeout exceeded",
     {
-      vmid: z.number().int().positive().describe("VM ID"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("VM ID"),
+      node: nodeNameSchema.optional().describe("Node name"),
       forceStop: z.boolean().optional().describe("Force stop after timeout"),
       timeout: z.number().int().optional().describe("Timeout in seconds"),
     },
@@ -230,8 +208,8 @@ export function registerVmWriteTools(
     "reboot_vm",
     "Reboot a running virtual machine",
     {
-      vmid: z.number().int().positive().describe("VM ID"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("VM ID"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, node }) => {
       try {
@@ -259,8 +237,8 @@ export function registerVmWriteTools(
     "suspend_vm",
     "Suspend a running VM to RAM",
     {
-      vmid: z.number().int().positive().describe("VM ID"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("VM ID"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, node }) => {
       try {
@@ -288,8 +266,8 @@ export function registerVmWriteTools(
     "resume_vm",
     "Resume a suspended VM",
     {
-      vmid: z.number().int().positive().describe("VM ID"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("VM ID"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, node }) => {
       try {
@@ -317,15 +295,12 @@ export function registerVmWriteTools(
     "clone_vm",
     "Clone an existing VM to create a new one",
     {
-      vmid: z.number().int().positive().describe("Source VM ID"),
-      newid: z
-        .number()
-        .int()
-        .positive()
+      vmid: vmIdSchema.describe("Source VM ID"),
+      newid: vmIdSchema
         .optional()
         .describe("New VM ID (auto-generated if omitted)"),
       name: z.string().optional().describe("Name for the new VM"),
-      node: z.string().optional().describe("Node name"),
+      node: nodeNameSchema.optional().describe("Node name"),
       full: z.boolean().optional().describe("Create full clone (not linked)"),
     },
     async ({ vmid, newid, name, node, full }) => {
@@ -364,8 +339,8 @@ export function registerVmWriteTools(
     "delete_vm",
     "Delete a virtual machine (must be stopped)",
     {
-      vmid: z.number().int().positive().describe("VM ID to delete"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("VM ID to delete"),
+      node: nodeNameSchema.optional().describe("Node name"),
       purge: z.boolean().optional().describe("Remove from backup jobs and HA"),
     },
     async ({ vmid, node, purge }) => {

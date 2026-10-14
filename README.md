@@ -39,7 +39,6 @@ Requires Node.js 20.19 or newer.
 
 5. If you need admin access, first switch the MCP runtime/config to the full
    server, then use `proxmox-admin`.
-
    - Default safe path: `.opencode/skills/proxmox-readonly/SKILL.md` + committed
      `opencode.json`
    - Opt-in elevated path: `dist/index.js` via a local override or the legacy
@@ -111,6 +110,56 @@ That file keeps the raw MCP JSON setup for OpenCode, Claude Desktop, Cursor, and
 generic MCP clients.
 
 ## Development
+
+For local experiments, use an isolated checkout and run
+`npm ci --ignore-scripts` followed by `npm test`. The tests use synthetic
+credentials, an in-memory API stand-in, and a loopback HTTP fixture. They do not
+require Proxmox environment variables or access a cluster. Starting either
+runtime with real credentials connects it to the configured host; read-only mode
+is not a cluster sandbox.
+
+### Inventory and error contracts
+
+`list_vms` always requests cached `/cluster/resources?type=vm` inventory once.
+An explicit `node` filters those results by exact node name; omitting it lists
+all visible QEMU guests. Metrics can lag current guest state. `cores` comes from
+`maxcpu`, and `pid` is always `null`. Node-specific callers previously received
+full node status and a PID. Removing `full` from the node endpoint would still
+read guest configurations, so it would not provide the same optimization.
+`get_vm_status` continues to request current status and configuration.
+Permissions and availability follow the cluster-resource endpoint, with no
+fallback to full node scans.
+
+All JSON tool text uses compact serialization. Parsed fields and list order
+remain the same, apart from the VM inventory changes above. Cluster VM/container
+lists and snapshot lists filter and format in one pass.
+
+Resource inputs follow Proxmox formats. VM IDs are integers from 100
+through 999999999. Node names contain alphanumeric characters and internal
+hyphens. Storage IDs start with a letter, end with an alphanumeric character,
+and allow internal dots, underscores, and hyphens. Snapshot names start with a
+letter, contain alphanumeric characters, underscores, or hyphens, and have 2 to
+40 characters. Task UPIDs follow `PVE::UPID::decode`, including empty task IDs,
+token identities containing `!`, and 8- or 9-digit process start times. UPIDs
+are URL-encoded before entering API paths. The configured default node uses the
+same node parser. Free-text descriptions and clone names retain their existing
+schemas.
+
+Errors caught by tool handlers set `isError: true` and return both readable text
+and `structuredContent.error`. Its `code` is `api_error`, `validation_error`,
+`network_error`, or `unexpected_error`. API errors include an HTTP `status`;
+validation errors include issue paths and codes. Messages omit API URLs,
+response bodies, status text, and arbitrary exception payloads. SDK
+input-validation errors occur before the handler and retain the SDK's response
+format. The transport-error parser covers `proxmox-api` 1.1.1's plain error
+strings; an unrecognized form returns a generic error.
+
+Clients can adopt compact JSON without changing their JSON parser. Consumers of
+node-specific PID values or raw exception text need to adapt before updating the
+runtime. These changes require no cluster configuration rollout. Rolling back
+the runtime restores the previous inventory and error behavior.
+
+### Checks
 
 Git hooks use [Pragma](https://github.com/zakstak/pragma) with `prek`. Clone
 Pragma to `~/.pragma`, then run `~/.pragma/install.sh --agent "$PWD"` from this

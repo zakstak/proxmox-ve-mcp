@@ -1,5 +1,6 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { nodeNameSchema, storageIdSchema } from "../utils/resource-schemas.js";
 import type { ProxmoxClient } from "../proxmox-client.js";
 import type { Config } from "../config.js";
 import { formatBytes, formatPercentage } from "../types.js";
@@ -14,7 +15,7 @@ export function registerStorageReadTools(
     "list_storage",
     "List all storage pools with usage and status",
     {
-      node: z.string().optional().describe("Node name"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ node }) => {
       try {
@@ -37,7 +38,7 @@ export function registerStorageReadTools(
         }));
 
         return {
-          content: [{ type: "text", text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -49,8 +50,8 @@ export function registerStorageReadTools(
     "get_storage_content",
     "List content of a storage pool (ISOs, disk images, templates)",
     {
-      storage: z.string().describe("Storage name"),
-      node: z.string().optional().describe("Node name"),
+      storage: storageIdSchema.describe("Storage name"),
+      node: nodeNameSchema.optional().describe("Node name"),
       content: z
         .string()
         .optional()
@@ -77,7 +78,7 @@ export function registerStorageReadTools(
         }));
 
         return {
-          content: [{ type: "text", text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);

@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { nodeNameSchema, vmIdSchema } from "../utils/resource-schemas.js";
 import type { ProxmoxClient } from "../proxmox-client.js";
 import type { Config } from "../config.js";
 import { formatBytes, formatUptime, formatPercentage } from "../types.js";
@@ -14,8 +15,7 @@ export function registerContainerReadTools(
     "list_containers",
     "List all LXC containers with status, CPU, and memory usage. Lists across all nodes when no node is specified.",
     {
-      node: z
-        .string()
+      node: nodeNameSchema
         .optional()
         .describe("Node name (omit to list across all nodes)"),
     },
@@ -40,18 +40,17 @@ export function registerContainerReadTools(
           }));
 
           return {
-            content: [
-              { type: "text", text: JSON.stringify(formatted, null, 2) },
-            ],
+            content: [{ type: "text", text: JSON.stringify(formatted) }],
           };
         }
 
         const resources = await proxmox.cluster.resources.$get({ type: "vm" });
 
-        const formatted = resources
-          .filter((r) => r.type === "lxc")
-          .map((r) => ({
-            vmid: r.vmid!,
+        const formatted = [];
+        for (const r of resources) {
+          if (r.type !== "lxc") continue;
+          formatted.push({
+            vmid: vmIdSchema.parse(r.vmid),
             name: r.name || `CT ${r.vmid}`,
             status: r.status || "unknown",
             node: r.node || "unknown",
@@ -63,10 +62,11 @@ export function registerContainerReadTools(
                 : "N/A",
             uptime: r.uptime ? formatUptime(r.uptime) : "N/A",
             type: "lxc",
-          }));
+          });
+        }
 
         return {
-          content: [{ type: "text", text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -78,8 +78,8 @@ export function registerContainerReadTools(
     "get_container_status",
     "Get detailed status and configuration of a specific container",
     {
-      vmid: z.number().int().positive().describe("Container ID"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("Container ID"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, node }) => {
       try {
@@ -116,7 +116,7 @@ export function registerContainerReadTools(
         };
 
         return {
-          content: [{ type: "text", text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -134,8 +134,8 @@ export function registerContainerWriteTools(
     "start_container",
     "Start a stopped container",
     {
-      vmid: z.number().int().positive().describe("Container ID"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("Container ID"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, node }) => {
       try {
@@ -163,8 +163,8 @@ export function registerContainerWriteTools(
     "stop_container",
     "Stop a running container",
     {
-      vmid: z.number().int().positive().describe("Container ID"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("Container ID"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, node }) => {
       try {
@@ -192,8 +192,8 @@ export function registerContainerWriteTools(
     "reboot_container",
     "Reboot a running container",
     {
-      vmid: z.number().int().positive().describe("Container ID"),
-      node: z.string().optional().describe("Node name"),
+      vmid: vmIdSchema.describe("Container ID"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, node }) => {
       try {
@@ -221,18 +221,15 @@ export function registerContainerWriteTools(
     "clone_container",
     "Clone an existing container to create a new one",
     {
-      vmid: z.number().int().positive().describe("Source Container ID"),
-      newid: z
-        .number()
-        .int()
-        .positive()
+      vmid: vmIdSchema.describe("Source Container ID"),
+      newid: vmIdSchema
         .optional()
         .describe("New Container ID (auto-generated if omitted)"),
       hostname: z
         .string()
         .optional()
         .describe("Hostname for the new container"),
-      node: z.string().optional().describe("Node name"),
+      node: nodeNameSchema.optional().describe("Node name"),
       full: z.boolean().optional().describe("Create full clone (not linked)"),
     },
     async ({ vmid, newid, hostname, node, full }) => {

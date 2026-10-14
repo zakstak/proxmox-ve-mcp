@@ -1,3 +1,4 @@
+import process from "node:process";
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { createServer } from "node:http";
@@ -136,13 +137,16 @@ test("read-only tool calls format mock responses and reject invalid schemas", as
   assert.equal(calls, 1);
 });
 
-test("formatters and error responses retain their public output", () => {
+test("formatters and sanitized structured errors", () => {
   assert.equal(formatBytes(0), "0.0 B");
   assert.equal(formatBytes(1024 ** 3), "1.0 GB");
   assert.equal(formatUptime(90060), "1d 1h");
   assert.equal(formatPercentage(0.125), "12.5%");
   assert.deepEqual(createErrorResponse(new Error("offline")), {
-    content: [{ type: "text", text: "Error: offline" }],
+    content: [{ type: "text", text: "Error: Unexpected tool error" }],
+    structuredContent: {
+      error: { code: "unexpected_error", message: "Unexpected tool error" },
+    },
     isError: true,
   });
   const validation = z.object({ vmid: z.number() }).safeParse({ vmid: "bad" });
@@ -154,10 +158,7 @@ test("formatters and error responses retain their public output", () => {
       data: { message: "permission denied" },
     },
   });
-  assert.equal(
-    getErrorMessage(apiError),
-    'Proxmox API Error 403 Forbidden: {"message":"permission denied"}',
-  );
+  assert.equal(getErrorMessage(apiError), "Proxmox API Error 403");
 });
 
 test("Undici adapter retains Proxmox token auth and API error behavior", async (t) => {
