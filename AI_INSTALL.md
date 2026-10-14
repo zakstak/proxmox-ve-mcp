@@ -35,7 +35,6 @@ if you need the legacy or full-access path.
    ```
 
 4. Load the skill that matches your access level.
-
    - Safe default: `.opencode/skills/proxmox-readonly/SKILL.md`
    - Elevated access: `.opencode/skills/proxmox-admin/SKILL.md`
 

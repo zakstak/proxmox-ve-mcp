@@ -1,5 +1,10 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  nodeNameSchema,
+  vmIdSchema,
+  taskUpidSchema,
+} from "../utils/resource-schemas.js";
 import type { ProxmoxClient } from "../proxmox-client.js";
 import type { Config } from "../config.js";
 import { createErrorResponse } from "../utils/error-handler.js";
@@ -13,7 +18,7 @@ export function registerTaskReadTools(
     "list_tasks",
     "List recent tasks on a node",
     {
-      node: z.string().optional().describe("Node name"),
+      node: nodeNameSchema.optional().describe("Node name"),
       limit: z
         .number()
         .int()
@@ -21,7 +26,7 @@ export function registerTaskReadTools(
         .max(100)
         .optional()
         .describe("Max tasks to return"),
-      vmid: z.number().int().optional().describe("Filter by VM/CT ID"),
+      vmid: vmIdSchema.optional().describe("Filter by VM/CT ID"),
     },
     async ({ node, limit, vmid }) => {
       try {
@@ -57,16 +62,22 @@ export function registerTaskReadTools(
     "get_task_status",
     "Get status and log of a specific task",
     {
-      upid: z.string().describe("Task UPID (unique task ID)"),
-      node: z.string().optional().describe("Node name"),
+      upid: taskUpidSchema.describe("Task UPID (unique task ID)"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ upid, node }) => {
       try {
         const nodeName = node || config.node;
 
         const [status, log] = await Promise.all([
-          proxmox.nodes.$(nodeName).tasks.$(upid).status.$get(),
-          proxmox.nodes.$(nodeName).tasks.$(upid).log.$get({ limit: 50 }),
+          proxmox.nodes
+            .$(nodeName)
+            .tasks.$(encodeURIComponent(upid))
+            .status.$get(),
+          proxmox.nodes
+            .$(nodeName)
+            .tasks.$(encodeURIComponent(upid))
+            .log.$get({ limit: 50 }),
         ]);
 
         const formatted = {
@@ -104,13 +115,16 @@ export function registerTaskWriteTools(
     "stop_task",
     "Attempt to stop a running task",
     {
-      upid: z.string().describe("Task UPID"),
-      node: z.string().optional().describe("Node name"),
+      upid: taskUpidSchema.describe("Task UPID"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ upid, node }) => {
       try {
         const nodeName = node || config.node;
-        await proxmox.nodes.$(nodeName).tasks.$(upid).$delete();
+        await proxmox.nodes
+          .$(nodeName)
+          .tasks.$(encodeURIComponent(upid))
+          .$delete();
 
         return {
           content: [{ type: "text", text: `Stop signal sent to task ${upid}` }],

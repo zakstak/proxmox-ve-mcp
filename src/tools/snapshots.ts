@@ -1,5 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import {
+  nodeNameSchema,
+  vmIdSchema,
+  snapshotNameSchema,
+} from "../utils/resource-schemas.js";
 import type { ProxmoxClient } from "../proxmox-client.js";
 import type { Config } from "../config.js";
 import { createErrorResponse } from "../utils/error-handler.js";
@@ -13,9 +18,9 @@ export function registerSnapshotReadTools(
     "list_snapshots",
     "List all snapshots for a VM or container",
     {
-      vmid: z.number().int().positive().describe("VM or container ID"),
+      vmid: vmIdSchema.describe("VM or container ID"),
       type: z.enum(["qemu", "lxc"]).default("qemu").describe("Resource type"),
-      node: z.string().optional().describe("Node name"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, type, node }) => {
       try {
@@ -27,18 +32,20 @@ export function registerSnapshotReadTools(
             ? await theNode.qemu.$(vmid).snapshot.$get()
             : await theNode.lxc.$(vmid).snapshot.$get();
 
-        const formatted = snapshots
-          .filter((s) => s.name !== "current")
-          .map((s) => ({
+        const formatted = [];
+        for (const s of snapshots) {
+          if (s.name === "current") continue;
+          formatted.push({
             name: s.name,
             description: s.description || "",
             time: s.snaptime ? new Date(s.snaptime * 1000).toISOString() : null,
             vmstate: s.vmstate === 1,
             parent: s.parent || null,
-          }));
+          });
+        }
 
         return {
-          content: [{ type: "text", text: JSON.stringify(formatted, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(formatted) }],
         };
       } catch (error) {
         return createErrorResponse(error);
@@ -56,12 +63,12 @@ export function registerSnapshotWriteTools(
     "create_snapshot",
     "Create a snapshot of a VM or container",
     {
-      vmid: z.number().int().positive().describe("VM or container ID"),
-      snapname: z.string().describe("Snapshot name"),
+      vmid: vmIdSchema.describe("VM or container ID"),
+      snapname: snapshotNameSchema.describe("Snapshot name"),
       description: z.string().optional().describe("Snapshot description"),
       vmstate: z.boolean().optional().describe("Include VM RAM state"),
       type: z.enum(["qemu", "lxc"]).default("qemu").describe("Resource type"),
-      node: z.string().optional().describe("Node name"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, snapname, description, vmstate, type, node }) => {
       try {
@@ -98,10 +105,10 @@ export function registerSnapshotWriteTools(
     "rollback_snapshot",
     "Rollback a VM or container to a snapshot",
     {
-      vmid: z.number().int().positive().describe("VM or container ID"),
-      snapname: z.string().describe("Snapshot name to rollback to"),
+      vmid: vmIdSchema.describe("VM or container ID"),
+      snapname: snapshotNameSchema.describe("Snapshot name to rollback to"),
       type: z.enum(["qemu", "lxc"]).default("qemu").describe("Resource type"),
-      node: z.string().optional().describe("Node name"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, snapname, type, node }) => {
       try {
@@ -131,10 +138,10 @@ export function registerSnapshotWriteTools(
     "delete_snapshot",
     "Delete a snapshot from a VM or container",
     {
-      vmid: z.number().int().positive().describe("VM or container ID"),
-      snapname: z.string().describe("Snapshot name to delete"),
+      vmid: vmIdSchema.describe("VM or container ID"),
+      snapname: snapshotNameSchema.describe("Snapshot name to delete"),
       type: z.enum(["qemu", "lxc"]).default("qemu").describe("Resource type"),
-      node: z.string().optional().describe("Node name"),
+      node: nodeNameSchema.optional().describe("Node name"),
     },
     async ({ vmid, snapname, type, node }) => {
       try {

@@ -1,10 +1,11 @@
 import { z } from "zod";
 import "dotenv/config";
+import { nodeNameSchema } from "./utils/resource-schemas.js";
 
 const configSchema = z.object({
   host: z.string().min(1),
   port: z.coerce.number().default(8006),
-  node: z.string().min(1),
+  node: nodeNameSchema,
   tokenId: z.string().min(1),
   tokenSecret: z.string().min(1),
   verifySsl: z
