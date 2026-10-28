@@ -167,8 +167,13 @@ Pragma to `~/.pragma`, then run `~/.pragma/install.sh --agent "$PWD"` from this
 repository to install the tools and portable hooks. For a different clone
 location, set `PRAGMA_HOME` or rerun that clone's installer. Run
 `prek run --all-files` and `prek run --all-files --hook-stage pre-push` to check
-the whole repository. This refresh was validated against Pragma commit
-`67843c5075e46f2cf0a5722fc3f4e5ff52ff0fda`.
+the whole repository. The pre-commit gates check formatting, lint, generated
+artifacts, and secrets. Pre-push runs the owner ESLint rules, typecheck, and
+tests, plus an advisory compiler comparison. After regenerating `prek.toml`,
+retain the `project-lint` hook so ESLint remains a blocking gate.
+
+This refresh was validated against Pragma commit
+`0fa579cb6c632b17dc27578abf17bb13fe8f7a98`.
 
 `npm test` builds and checks both MCP stdio handshakes, tool schemas, the
 read-only tool boundary, and mock responses. These tests never connect to a live
