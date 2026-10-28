@@ -21,6 +21,15 @@ files = '(\.(go|rs|ts|tsx|js|jsx|yml|yaml|sh|toml|py)$)|((^|/)([Dd]ockerfile(\.[
 stages = ["pre-commit"]
 
 [[repos.hooks]]
+id = "generated-artifacts"
+name = "generated artifacts"
+entry = ".pragma-hooks/generated-artifacts.sh"
+language = "script"
+pass_filenames = false
+always_run = true
+stages = ["pre-commit"]
+
+[[repos.hooks]]
 id = "kingfisher"
 name = "kingfisher"
 entry = ".pragma-hooks/secrets.sh"
@@ -34,6 +43,25 @@ id = "test"
 name = "test"
 entry = ".pragma-hooks/test.sh"
 language = "script"
+pass_filenames = false
+always_run = true
+stages = ["pre-push"]
+
+[[repos.hooks]]
+id = "pragma-shadow"
+name = "ts-rust shadow"
+entry = ".pragma-hooks/shadow.sh"
+language = "script"
+pass_filenames = false
+always_run = true
+stages = ["pre-push"]
+
+# Keep the owner's ESLint rules blocking alongside Pragma's Oxlint checks.
+[[repos.hooks]]
+id = "project-lint"
+name = "project ESLint"
+entry = "npm run lint"
+language = "system"
 pass_filenames = false
 always_run = true
 stages = ["pre-push"]
