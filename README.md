@@ -7,7 +7,8 @@ MCP config stays available as a legacy opt-in.
 
 ## Quick start
 
-Requires Node.js 20.19 or newer.
+Requires Node.js 24 or newer. `.node-version` selects the Node 24.22.1 security
+release for development.
 
 1. Install dependencies and build the runtime.
 
@@ -173,12 +174,13 @@ the whole repository. This refresh was validated against Pragma commit
 read-only tool boundary, and mock responses. These tests never connect to a live
 Proxmox cluster or perform cluster writes.
 
-Dependencies retain the Node.js 20.19 minimum: Undici 7 is the latest compatible
-major (Undici 8 requires Node.js 22.19). TypeScript 6.0.3 is the latest version
-supported by the current TypeScript ESLint parser's `<6.1.0` peer range; Node
-types follow the supported Node 20 baseline. The HTTP adapter test uses only a
-loopback mock to verify token headers, GET requests and API errors across the
-Undici upgrade.
+Node.js 24 is the runtime baseline, with matching Node 24 types and Undici 8.
+Node 20 reached end of life on April 30, 2026. Use a patched LTS runtime such as
+the Node 24.22.1 security release pinned in `.node-version`; Node 24.0.0 is
+tested only as the compatibility minimum. TypeScript stays at 6.0.3 because the
+latest TypeScript ESLint parser requires `<6.1.0`. The HTTP adapter test uses
+only a loopback mock to verify token headers, GET, POST, DELETE, and API errors
+across the Undici upgrade.
 
 ```bash
 npm run dev            # Hot reload (full server)

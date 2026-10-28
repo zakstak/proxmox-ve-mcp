@@ -161,20 +161,28 @@ test("formatters and sanitized structured errors", () => {
   assert.equal(getErrorMessage(apiError), "Proxmox API Error 403");
 });
 
-test("Undici adapter retains Proxmox token auth and API error behavior", async (t) => {
+test("Undici adapter retains authenticated reads, mutations, and API errors", async (t) => {
   const requests = [];
-  const mock = createServer((request, response) => {
+  const mock = createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString();
+    const contentType = request.headers["content-type"] || "";
     requests.push({
       method: request.method,
       url: request.url,
       authorization: request.headers.authorization,
+      contentType,
+      body: Object.fromEntries(new URLSearchParams(body)),
     });
     response.setHeader("Content-Type", "application/json;charset=UTF-8");
     if (requests.length === 1) {
       response.end(JSON.stringify({ data: [{ node: "mock-node" }] }));
-    } else {
+    } else if (request.method === "GET") {
       response.statusCode = 403;
       response.end(JSON.stringify({ errors: "fixture permission denied" }));
+    } else {
+      response.end(JSON.stringify({ data: "fixture-task" }));
     }
   });
   t.after(
@@ -200,12 +208,29 @@ test("Undici adapter retains Proxmox token auth and API error behavior", async (
     proxmox.nodes.$get(),
     /403 Forbidden.*fixture permission denied/,
   );
-  assert.deepEqual(
-    requests,
-    Array(2).fill({
-      method: "GET",
-      url: "/api2/json/nodes",
-      authorization: `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
-    }),
+  const vm = proxmox.nodes.$("mock-node").qemu.$(100);
+  assert.equal(
+    await vm.clone.$post({ newid: 101, name: "fixture clone" }),
+    "fixture-task",
   );
+  assert.equal(await vm.$delete({ purge: true }), "fixture-task");
+  assert.ok(
+    requests.every(
+      (request) =>
+        request.authorization ===
+        `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
+    ),
+  );
+  assert.deepEqual(
+    requests.map(({ method, url }) => ({ method, url })),
+    [
+      { method: "GET", url: "/api2/json/nodes" },
+      { method: "GET", url: "/api2/json/nodes" },
+      { method: "POST", url: "/api2/json/nodes/mock-node/qemu/100/clone" },
+      { method: "DELETE", url: "/api2/json/nodes/mock-node/qemu/100?purge=1" },
+    ],
+  );
+  assert.equal(requests[2].contentType, "application/x-www-form-urlencoded");
+  assert.deepEqual(requests[2].body, { newid: "101", name: "fixture clone" });
+  assert.deepEqual(requests[3].body, {});
 });
