@@ -7,7 +7,7 @@ MCP config stays available as a legacy opt-in.
 
 ## Quick start
 
-Requires Node.js 24 or newer. `.node-version` selects the Node 24.22.1 security
+Requires Node.js 24 or newer. `.node-version` selects the Node 24.22.3 security
 release for development.
 
 1. Install dependencies and build the runtime.
@@ -181,9 +181,11 @@ Proxmox cluster or perform cluster writes.
 
 Node.js 24 is the runtime baseline, with matching Node 24 types and Undici 8.
 Node 20 reached end of life on April 30, 2026. Use a patched LTS runtime such as
-the Node 24.22.1 security release pinned in `.node-version`; Node 24.0.0 is
+the Node 24.22.3 security release pinned in `.node-version`; Node 24.0.0 is
 tested only as the compatibility minimum. TypeScript stays at 6.0.3 because the
-latest TypeScript ESLint parser requires `<6.1.0`. The HTTP adapter test uses
+latest TypeScript ESLint parser (8.74.0) requires `<6.1.0`; TypeScript 7.0.2 is
+therefore deferred. Node 24 types stay on the latest Node 24 release (24.19.4),
+rather than 26.6.11, to match the runtime baseline. The HTTP adapter test uses
 only a loopback mock to verify token headers, GET, POST, DELETE, and API errors
 across the Undici upgrade.
 
